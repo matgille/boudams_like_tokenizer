@@ -1,7 +1,6 @@
 # Boudams like segmenter
 
-Fork from Thibault Clérice's Boudams tokenizer [Clérice 2020] ([repo](https://github.com/PonteIneptique/boudams)), rebuilt taking in 
-considerations the conclusions of his paper on the best architecture for this task.
+Fork from Thibault Clérice's Boudams tokenizer [Clérice 2020] ([repo](https://github.com/PonteIneptique/boudams)).
 
 See also [Ben Trevett's notebook](https://github.com/bentrevett/pytorch-seq2seq/blob/master/5%20-%20Convolutional%20Sequence%20to%20Sequence%20Learning.ipynb)
 from which the code is derived. 
