@@ -114,10 +114,13 @@ class Tagger:
             result = []
             batch_size = 256
             steps = len(text_lines) // 256
+            print(steps)
             for n in tqdm.tqdm(range(steps)):
-                batch = text_lines[n * steps: n * steps + batch_size]
+                batch = text_lines[n * batch_size: (n * batch_size) + batch_size]
                 predicted = self.tag_and_detect_lb(batch)
                 result.extend(predicted)
+            # We predict the last lines of the text.
+            result.extend(self.tag_and_detect_lb(text_lines[(n+1)*batch_size:-1]))
         else:
             result = self.tag_and_detect_lb(text_lines)
         result = [f'{text}-' if line_break is False else text for (text, line_break) in result]
@@ -260,12 +263,12 @@ class Tagger:
                 if self.debug:
                     print(f"{prediction[:borne_sup]}|{prediction[borne_sup:]}")
                     print(line_break)
-            except:
-                print(f"Index: {index}")
+            except IndexError as e:
+                print(e)
                 print(f"String: |{prediction}|")
                 print(f"Regex: |{expression}|")
                 print(borne_sup)
-                print("LB Critical error")
+                print("LB error")
                 exit(0)
 
             # On se débarrasse de la deuxième partie de la ligne.
