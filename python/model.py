@@ -14,6 +14,7 @@ class Encoder(nn.Module):
                  emb_dim,
                  hid_dim,
                  n_layers,
+
                  kernel_size,
                  dropout,
                  device,
