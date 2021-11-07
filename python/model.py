@@ -123,18 +123,8 @@ class LinearDecoder(nn.Module):
     """
     def __init__(self, enc_dim, out_dim):
         super().__init__()
-        self.out_dim = out_dim
-        # highway
-        self.highway = None
-        # decoder output
         self.decoder = nn.Linear(enc_dim, out_dim)
 
-        self.relu = True
-
     def forward(self, enc_outs):
-        if self.highway is not None:
-            enc_outs = self.highway(enc_outs)
-
         linear_out = self.decoder(enc_outs)
-
         return linear_out
