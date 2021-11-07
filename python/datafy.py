@@ -4,6 +4,7 @@ import unicodedata
 import torch
 import utils as utils
 
+
 class Datafier:
     def __init__(self):
         self.max_length_examples = 0
@@ -50,7 +51,6 @@ class Datafier:
         self.get_frequency(normalized.replace("\n", ""))
         normalized = normalized.split("\n")
         return normalized
-
 
     def augment_data(self, data: list, double_corpus=True) -> list:
         '''

@@ -1,4 +1,5 @@
 import re
+import shutil
 import unicodedata
 
 import lxml.etree as etree
@@ -14,7 +15,18 @@ import utils as utils
 
 
 class Tagger:
-    def __init__(self, device, input_vocab: str, target_vocab: str, model: str, remove_breaks: bool, XML_entities: bool, debug:bool):
+    """
+    Tagger that manages xml and txt files.
+    """
+
+    def __init__(self, device,
+                 input_vocab: str,
+                 target_vocab: str,
+                 model: str,
+                 remove_breaks: bool,
+                 xml_entities: bool,
+                 entities_mapping: dict,
+                 debug: bool):
         self.device = device
         if self.device == 'cpu':
             self.model = torch.load(model, map_location=self.device)
@@ -25,33 +37,68 @@ class Tagger:
         self.reverse_input_vocab = {v: k for k, v in self.input_vocab.items()}
         self.reverse_target_vocab = {v: k for k, v in self.target_vocab.items()}
         self.remove_breaks = remove_breaks  # Keep the linebreaks in prediction?
-        self.entities = XML_entities  # Whether to display original segmentation information
+        self.entities = xml_entities  # Whether to display original segmentation information with xml entities
         self.debug = debug
+        self.entities_dict = entities_mapping
 
     def tokenize_xml(self, xml_file):
+        """
+        This function tokenizes an xml file
+        """
         tei_namespace = 'http://www.tei-c.org/ns/1.0'
         namespace_declaration = {'tei': tei_namespace}
         with open(xml_file, "r") as input_file:
-            f = etree.parse(input_file)
+            parser = etree.XMLParser(resolve_entities=False)
+            f = etree.parse(input_file, parser=parser)
         line_breaks = f.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
         text_lines = [utils.clean_and_normalize_encoding(line.tail) for line in line_breaks]
+        with open(xml_file.replace('.xml', '.txt'), "w") as output_txt_file:
+            output_txt_file.write("\n".join(text_lines))
 
-        predicted = self.tag_and_detect_lb(text_lines)
-        print(predicted)
+        # To avoid out of memory problem.
+        if len(text_lines) > 500:
+            result = []
+            batch_size = 256
+            steps = len(text_lines) // 256
+            for n in tqdm.tqdm(range(steps)):
+                fragment = text_lines[n * steps: n * steps + batch_size]
+                predicted = self.tag_and_detect_lb(fragment)
+                result.extend(predicted)
+        else:
+            predicted = self.tag_and_detect_lb(text_lines)
 
         zipped = list(zip(line_breaks, predicted))
 
-        for xml_element, (text, lb) in zipped:
+        for index, (xml_element, (text, lb)) in enumerate(zipped[:-1]):
+            correct_element, (correct_text, next_lb) = zipped[index + 1]
             if lb == True:
-                xml_element.set("break", "n")
+                correct_element.set("break", "y")
             else:
-                xml_element.set("break", "y")
-            xml_element.tail = text
+                correct_element.set("break", "n")
+            correct_element.tail = correct_text
 
+        # Management of last tei:lb
+        last_element, (last_text_node, last_lb) = zipped[-1]
+        last_element.tail = last_text_node
+
+        shutil.copy("XML/entities.dtd", xml_file.replace(".xml", ".dtd"))
         with open(xml_file.replace(".xml", ".tokenized.xml"), "w") as output_file:
-            output_file.write(etree.tostring(f, pretty_print=True).decode())
+            final_string = etree.tostring(f, pretty_print=True).decode().replace("amp;", "")
+
+            # Producing the DTD declaration
+            if self.entities:
+                final_string = final_string.replace("<TEI",
+                                                    f"<?xml version='1.0' encoding='UTF-8'?>\n"
+                                                    f"<!DOCTYPE TEI SYSTEM '{xml_file.split('/')[-1].replace('.xml', '')}.dtd'>\n"
+                                                    f"<TEI")
+                final_string.replace("rien-esp", self.entities_dict["add_space"][1:-1])
+                final_string.replace("esp-rien", self.entities_dict["remove_space"][1:-1])
+            output_file.write(final_string)
 
     def tokenize_txt(self, txt_file):
+        """
+        This function tokenizes a txt file
+        """
         with open(txt_file, "r") as input_file:
             inputs = [line for line in input_file.read().split("\n")]
             text_lines = [utils.clean_and_normalize_encoding(line) for line in inputs]
@@ -68,12 +115,12 @@ class Tagger:
             batch_size = 256
             steps = len(text_lines) // 256
             for n in tqdm.tqdm(range(steps)):
-                fragment = text_lines[n*steps: n*steps + batch_size]
-                predictions = self.tag_and_detect_lb(fragment)
-                result.extend(predictions)
+                batch = text_lines[n * steps: n * steps + batch_size]
+                predicted = self.tag_and_detect_lb(batch)
+                result.extend(predicted)
         else:
             result = self.tag_and_detect_lb(text_lines)
-        result = [f'{text}-' if line_break is True else text for (text, line_break) in result]
+        result = [f'{text}-' if line_break is False else text for (text, line_break) in result]
         with open(txt_file.replace('.txt', '.tokenized.txt'), "w") as input_file:
             input_file.write("\n".join(result))
         print("Done!")
@@ -117,9 +164,6 @@ class Tagger:
             min_pos += 2  # As we got <PAD> and then <SOS> starting the prediction
             sentence = current_input[min_pos: max_pos]
             predict_mask = current_mask[min_pos: max_pos]
-            # print(sentence)
-            # print(predict_mask)
-            # exit(0)
             sentence_masked_zipped = list(zip(sentence, predict_mask))
             predicted_line = []
             for char, mask in sentence_masked_zipped:
@@ -141,7 +185,7 @@ class Tagger:
                     else:
                         predicted_line.append(" ")
                     if self.entities:
-                        predicted_line.append("&rien-esp;")
+                        predicted_line.append(self.entities_dict["add_space"])
                     else:
                         predicted_line.append(" ")
                 elif mask == "<s-S>":
@@ -150,7 +194,7 @@ class Tagger:
                         predicted_line.append(char)
                     else:
                         if self.entities:
-                            predicted_line.append("&esp-rien;")
+                            predicted_line.append(self.entities_dict["remove_space"])
                 else:
                     print("Unknown")
                     print(mask)
@@ -176,7 +220,6 @@ class Tagger:
         """
 
         pairs = [lines[n] + lines[n + 1] for n in range(len(lines) - 1)]
-
         # On annote les lignes fusionnées
         preds_list = []
         lines_to_predict = pairs
@@ -190,7 +233,11 @@ class Tagger:
             # On supprime les espaces. 8 Caractères doivent être suffisants pour éviter toute ambiguité.
             string_to_match = orig[-20:].replace(" ", "")
             # On utilise une expression régulière pour matcher la limite entre les deux lignes, pour les séparer.
-            expression = "\s*".join(string_to_match)
+            if self.entities:
+                expression = f"(\s|{self.entities_dict['add_space']}|{self.entities_dict['add_space']})*".join(
+                    string_to_match)
+            else:
+                expression = "\s*".join(string_to_match)
             regexp = re.compile(expression)
             result = regexp.search(prediction)
             try:
@@ -206,7 +253,13 @@ class Tagger:
 
             # S'il y a une espace, il n'y a pas de césure
             try:
-                line_break = prediction[borne_sup] is not " "
+                line_break = prediction[borne_sup] == " "
+                # In case of production of xml entities, we have to search for &rien-esp;:
+                if not line_break:
+                    line_break = prediction[borne_sup:borne_sup + 10] == self.entities_dict['add_space']
+                if self.debug:
+                    print(f"{prediction[:borne_sup]}|{prediction[borne_sup:]}")
+                    print(line_break)
             except:
                 print(f"Index: {index}")
                 print(f"String: |{prediction}|")
@@ -222,16 +275,13 @@ class Tagger:
             # On peut aussi créer une pseudo balise XML.
 
             prediction = re.sub(r"\s+", r" ", prediction)
-            prediction = (prediction, line_break)
 
-            processed_list.append(prediction)
+            processed_list.append((prediction, line_break))
 
         # Gestion de la dernière ligne
-        last_prediction, last_string = zipped_list[-1]
-        result = regexp.search(last_prediction)
-        borne_sup = result.span(0)[1]
-        prediction = last_prediction[borne_sup:]
-        prediction = re.sub(r"\s+", r" ", prediction)
+        last_line = lines[-1]
+        last_prediction = "".join(self.predict_lines(last_line))
+        prediction = re.sub(r"\s+", r" ", last_prediction)
         processed_list.append((prediction, True))
 
         # We remove any leading spaces

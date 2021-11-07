@@ -26,10 +26,11 @@ def string_to_text(string, path):
         output_file.write(string)
 
 
-def normalize(line:str):
+def normalize(line: str):
     # NFD semble la meilleure normalisation pour l'instant.
     # Voir https://unicode.org/reports/tr15/
     return "".join([unicodedata.normalize('NFD', char) for char in line])
+
 
 def clean_and_normalize_encoding(line: str):
     if re.match(f'^\s+$', line):
@@ -37,7 +38,7 @@ def clean_and_normalize_encoding(line: str):
     else:
         norm_line = re.sub("\s+", " ", line)
         norm_line = normalize(norm_line)
-        #norm_line = "".join([char for char in norm_line])
+        # norm_line = "".join([char for char in norm_line])
 
     return norm_line
 
@@ -49,7 +50,12 @@ def random_bool(probs: int) -> bool:
     """
     number = random.randint(0, 100)
     if number < probs:
-        result = True
+        return True
     else:
-        result = False
-    return result
+        return False
+
+def entities_decl():
+    "<!DOCTYPE entities_decl [" \
+    "<!ENTITY esp-rien '<choice xmlns='http://www.tei-c.org/ns/1.0'><orig> </orig><reg/></choice>'>" \
+    "<!ENTITY rien-esp '<choice xmlns='http://www.tei-c.org/ns/1.0'><orig/><reg><space/></reg></choice>'>" \
+    "]>"

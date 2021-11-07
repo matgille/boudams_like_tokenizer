@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!ENTITY esp-rien '<choice xmlns="http://www.tei-c.org/ns/1.0"><orig> </orig><reg/></choice>'>
+<!ENTITY rien-esp '<choice xmlns="http://www.tei-c.org/ns/1.0"><orig/><reg><space/></reg></choice>'>
