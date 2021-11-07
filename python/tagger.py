@@ -19,21 +19,27 @@ class Tagger:
     Tagger that manages xml and txt files.
     """
 
-    def __init__(self, device,
+    def __init__(self,
+                 device,
                  input_vocab: str,
-                 target_vocab: str,
                  model: str,
                  remove_breaks: bool,
-                 xml_entities: bool,
-                 entities_mapping: dict,
-                 debug: bool):
+                 debug: bool,
+                 entities_mapping: dict = {},
+                 xml_entities: bool = False):
         self.device = device
         if self.device == 'cpu':
             self.model = torch.load(model, map_location=self.device)
         else:
             self.model = torch.load(model).to(self.device)
         self.input_vocab = torch.load(input_vocab)
-        self.target_vocab = torch.load(target_vocab)
+        self.target_vocab = {"<PAD>": 0,
+                             "<SOS>": 1,
+                             "<EOS>": 2,
+                             "<WC>": 3,
+                             "<WB>": 4,
+                             "<s-s>": 5,
+                             "<s-S>": 6}
         self.reverse_input_vocab = {v: k for k, v in self.input_vocab.items()}
         self.reverse_target_vocab = {v: k for k, v in self.target_vocab.items()}
         self.remove_breaks = remove_breaks  # Keep the linebreaks in prediction?
@@ -57,17 +63,20 @@ class Tagger:
 
         # To avoid out of memory problem.
         if len(text_lines) > 500:
-            result = []
+            predictions = []
             batch_size = 256
             steps = len(text_lines) // 256
             for n in tqdm.tqdm(range(steps)):
-                fragment = text_lines[n * steps: n * steps + batch_size]
-                predicted = self.tag_and_detect_lb(fragment)
-                result.extend(predicted)
-        else:
-            predicted = self.tag_and_detect_lb(text_lines)
+                batch = text_lines[n * batch_size: (n * batch_size) + batch_size]
+                predicted_batch = self.tag_and_detect_lb(batch)
+                predictions.extend(predicted_batch)
 
-        zipped = list(zip(line_breaks, predicted))
+            # We predict the last lines of the text that don't make it to a full batch.
+            predictions.extend(self.tag_and_detect_lb(text_lines[(n + 1) * batch_size:-1]))
+        else:
+            predictions = self.tag_and_detect_lb(text_lines)
+
+        zipped = list(zip(line_breaks, predictions))
 
         for index, (xml_element, (text, lb)) in enumerate(zipped[:-1]):
             correct_element, (correct_text, next_lb) = zipped[index + 1]
@@ -111,21 +120,21 @@ class Tagger:
 
         # To avoid out of memory problem.
         if len(text_lines) > 500:
-            result = []
+            predictions = []
             batch_size = 256
             steps = len(text_lines) // 256
-            print(steps)
             for n in tqdm.tqdm(range(steps)):
                 batch = text_lines[n * batch_size: (n * batch_size) + batch_size]
-                predicted = self.tag_and_detect_lb(batch)
-                result.extend(predicted)
-            # We predict the last lines of the text.
-            result.extend(self.tag_and_detect_lb(text_lines[(n+1)*batch_size:-1]))
+                predicted_batch = self.tag_and_detect_lb(batch)
+                predictions.extend(predicted_batch)
+
+            # We predict the last lines of the text that don't make it to a full batch.
+            predictions.extend(self.tag_and_detect_lb(text_lines[(n + 1) * batch_size:-1]))
         else:
-            result = self.tag_and_detect_lb(text_lines)
-        result = [f'{text}-' if line_break is False else text for (text, line_break) in result]
+            predictions = self.tag_and_detect_lb(text_lines)
+        predictions = [f'{text}-' if line_break is False else text for (text, line_break) in predictions]
         with open(txt_file.replace('.txt', '.tokenized.txt'), "w") as input_file:
-            input_file.write("\n".join(result))
+            input_file.write("\n".join(predictions))
         print("Done!")
 
     def predict_lines(self, lines_to_predict: list):
@@ -237,7 +246,7 @@ class Tagger:
             string_to_match = orig[-20:].replace(" ", "")
             # On utilise une expression régulière pour matcher la limite entre les deux lignes, pour les séparer.
             if self.entities:
-                expression = f"(\s|{self.entities_dict['add_space']}|{self.entities_dict['add_space']})*".join(
+                expression = f"(\s|{self.entities_dict['add_space']}|{self.entities_dict['remove_space']})*".join(
                     string_to_match)
             else:
                 expression = "\s*".join(string_to_match)
@@ -258,7 +267,7 @@ class Tagger:
             try:
                 line_break = prediction[borne_sup] == " "
                 # In case of production of xml entities, we have to search for &rien-esp;:
-                if not line_break:
+                if not line_break and self.entities:
                     line_break = prediction[borne_sup:borne_sup + 10] == self.entities_dict['add_space']
                 if self.debug:
                     print(f"{prediction[:borne_sup]}|{prediction[borne_sup:]}")

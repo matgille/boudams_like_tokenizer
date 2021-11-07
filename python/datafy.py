@@ -6,7 +6,7 @@ import utils as utils
 
 
 class Datafier:
-    def __init__(self):
+    def __init__(self, timestamp):
         self.max_length_examples = 0
         self.frequency_dict = {}
         self.unknown_threshold = 14  # Under this frequency the tokens will be tagged as <UNK>
@@ -16,8 +16,10 @@ class Datafier:
         self.train_padded_targets = []
         self.test_padded_examples = []
         self.test_padded_targets = []
+        self.timestamp = timestamp
 
     def create_train_corpus(self, train_path):
+        print("Create train corpus")
         imported_data = self.get_data_from_txt(train_path)
         self.input_vocabulary, self.target_vocabulary = self.create_vocab(imported_data)
         augmented_data = self.augment_data(imported_data, double_corpus=True)
@@ -29,6 +31,7 @@ class Datafier:
         This function creates the test corpus, and uses the vocabulary of the train set to do so.
         Outputs: tensorized input, tensorized target, formatted input to ease accuracy computation.
         """
+        print("Create test corpus")
         inputs = self.get_data_from_txt(test_path)
         treated_inputs = self.augment_data(inputs, double_corpus=False)
         test_examples, test_targets = self.produce_train_corpus(treated_inputs)
@@ -47,9 +50,9 @@ class Datafier:
         '''
         with open(path, "r") as training_file:
             imported_data = training_file.read()
-            normalized = utils.normalize(imported_data)
-        self.get_frequency(normalized.replace("\n", ""))
-        normalized = normalized.split("\n")
+            cleaned_text = [utils.remove_multiple_spaces(line) for line in imported_data.split("\n")]
+            normalized = [utils.normalize(line) for line in cleaned_text]
+        self.get_frequency("".join(normalized))
         return normalized
 
     def augment_data(self, data: list, double_corpus=True) -> list:
@@ -157,7 +160,6 @@ class Datafier:
             except:
                 input_vocabulary[char] = n
                 n += 1
-        torch.save(input_vocabulary, "../models/input_vocab.voc")
-        torch.save(target_vocabulary, "../models/target_vocab.voc")
+        torch.save(input_vocabulary, f"../models/input_vocab_{self.timestamp}.voc")
         print(input_vocabulary)
         return input_vocabulary, target_vocabulary

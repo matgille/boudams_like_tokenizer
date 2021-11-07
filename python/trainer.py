@@ -1,4 +1,8 @@
+from datetime import datetime
+import glob
+import os
 import random
+import shutil
 import numpy as np
 import torch
 import utils as utils
@@ -13,11 +17,12 @@ class Trainer:
     def __init__(self, epochs, lr, batch_size, train_path, test_path):
         # First we prepare the corpus
         print("Preparing corpus.")
-        datafyer = datafy.Datafier()
+        now = datetime.now()
+        self.timestamp = now.strftime("%d-%m-%Y_%H:%M:%S")
+        datafyer = datafy.Datafier(self.timestamp)
         datafyer.create_train_corpus(train_path)
         self.train_examples = datafyer.train_padded_examples
         self.train_targets = datafyer.train_padded_targets
-
         # Il manque à importer le set de test.
         datafyer.create_test_corpus(test_path)
         self.test_examples = datafyer.test_padded_examples
@@ -51,8 +56,22 @@ class Trainer:
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.TRG_PAD_IDX)
 
-    def save_model(self):
-        torch.save(self.model, "../models/model_tokenizer.pt")
+        self.accuracies = []
+
+    def save_model(self, epoch):
+        torch.save(self.model, f"../models/.tmp/model_tokenizer_{epoch}.pt")
+
+    def get_best_model(self):
+        print(self.accuracies)
+        best_epoch_accuracy = self.accuracies.index(max(self.accuracies))
+        print(f"Best model: {best_epoch_accuracy}.")
+        models = glob.glob(f"../models/.tmp/model_tokenizer_*.pt")
+        for model in models:
+            if model == f"../models/.tmp/model_tokenizer_{best_epoch_accuracy}.pt":
+                shutil.move(model, f"../models/model_tokenizer.best_{best_epoch_accuracy}_{self.timestamp}.pt")
+            else:
+                os.remove(model)
+        print(f"Saving best model to ../models/model_tokenizer.best_{best_epoch_accuracy}_{self.timestamp}.pt")
 
     def train(self, clip=0.1, shuffle_dataset=True):
         print("Starting training")
@@ -102,17 +121,18 @@ class Trainer:
             # We compute accuracy on last batch of data
             self.evaluate()
             print(f"Loss: {str(loss.item())}")
-        self.save_model()
+            self.save_model(epoch_number)
+        self.get_best_model()
+
 
     def evaluate(self):
         """
         Réécrire la fonction pour comparer directement target et prédiction pour
         produire l'accuracy.
         """
-
-        examples = self.test_examples[64:90]
-        targets = self.test_targets[64:90]
-        print(len(examples))
+        value = random.randint(0, len(self.test_examples) - 128)
+        examples = self.test_examples[value:value + 128]
+        targets = self.test_targets[value:value + 128]
 
         tensor_examples = utils.tensorize(examples).to(self.device)
         tensor_target = utils.tensorize(targets).to(self.device)
@@ -144,4 +164,5 @@ class Trainer:
                     correct_predictions += 1
 
         accuracy = correct_predictions / examples_number
+        self.accuracies.append(accuracy)
         print(f"Loss: {loss}\nAccuracy on test set: {accuracy}")

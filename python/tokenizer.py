@@ -1,6 +1,8 @@
 import random
 import sys
 
+
+
 import trainer as trainer
 import utils as utils
 import tagger as tagger
@@ -15,11 +17,14 @@ test_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/tes
 # test_path = "../.data/test.txt"
 seed = 1234
 random.seed(seed)
+
 entities_mapping = {"add_space": "&rien-esp;",
                     "remove_space": "&esp-rien;"}
+
+
 if sys.argv[1] == "train":
     trainer = trainer.Trainer(batch_size=64,
-                              epochs=2,
+                              epochs=15,
                               lr=0.0005,
                               train_path=train_path,
                               test_path=test_path)
@@ -28,9 +33,8 @@ if sys.argv[1] == "train":
 
 elif sys.argv[1] == "tag_xml":
     tagger = tagger.Tagger(device="cpu",
-                           input_vocab="../models/input_vocab.voc",
-                           target_vocab="../models/target_vocab.voc",
-                           model="../models/model_tokenizer.pt",
+                           input_vocab="../models/input_vocab_07-11-2021_20:38:28.voc",
+                           model="../models/model_tokenizer.best_11_07-11-2021_20:38:28.pt",
                            remove_breaks=False,
                            xml_entities=True,
                            entities_mapping=entities_mapping,
@@ -42,12 +46,9 @@ elif sys.argv[1] == "tag_xml":
 
 elif sys.argv[1] == "tag_txt":
     tagger = tagger.Tagger(device="cuda:0",
-                           input_vocab="../models/input_vocab.voc",
-                           target_vocab="../models/target_vocab.voc",
-                           model="../models/model_tokenizer.pt",
+                           input_vocab="../models/input_vocab_07-11-2021_20:38:28.voc",
+                           model="../models/model_tokenizer.best_11_07-11-2021_20:38:28.pt",
                            remove_breaks=False,
-                           xml_entities=False,
-                           entities_mapping=entities_mapping,
                            debug=False)
 
     tagger.tokenize_txt(sys.argv[2])

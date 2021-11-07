@@ -32,6 +32,10 @@ def normalize(line: str):
     return "".join([unicodedata.normalize('NFD', char) for char in line])
 
 
+def remove_multiple_spaces(text: str):
+    return re.sub("\s+", " ", text)
+
+
 def clean_and_normalize_encoding(line: str):
     if re.match(f'^\s+$', line):
         norm_line = None
@@ -53,6 +57,7 @@ def random_bool(probs: int) -> bool:
         return True
     else:
         return False
+
 
 def entities_decl():
     "<!DOCTYPE entities_decl [" \
