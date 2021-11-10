@@ -9,9 +9,18 @@ from which the code is derived.
 
 Three classes are predicted, instead of two. This allows to keep the original segmentation 
 information:
-- Word Boundary > Word Content (remove a space). Example: `fizo los`
-- Word Content > Word boundary (add a space). Example: `delas`
-- Word Content (do nothing). Example: `la caualleria`
+- Word Boundary > Word Content (remove a space). Example: `fizo<X>los`
+- Word Content > Word boundary (add a space). Example: `de<X>las`
+- Word Content (do nothing). Example: `la<X>caualleria`
+
+## Training a model
+
+The program expects correctly segmented lines of text as the training data.
+
+Set path to test and train sets in `tokeniser.py` file. 
+
+`python tokeniser.py train`
+
 
 ## Outputs
 
