@@ -15,7 +15,7 @@ information:
 
 ## Training a model
 
-The program expects correctly segmented lines of text as the training data.
+The program expects correctly segmented lines (with line breaks) of text as the training data.
 
 Set path to test and train sets in `tokeniser.py` file. 
 
