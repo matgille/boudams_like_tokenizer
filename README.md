@@ -15,16 +15,16 @@ information:
 
 ## Training a model
 
-The program expects correctly segmented lines (with line breaks) of text as the training data.
+The program expects correctly segmented lines of text (with line breaks) as the training data.
 
 Set path to test and train sets in `tokeniser.py` file. 
 
 `python tokeniser.py train`
 
 
-## Outputs
+## Tagging text
 
-The tagger supports txt and xml inputs/outputs.
+The tagger supports txt and xml-tei inputs/outputs.
 It allows to produce an XML file with entities to easier
 indicate the segmentation information.
 
