@@ -7,11 +7,12 @@ from which the code is derived.
 
 ## What differs from Boudams
 
-Besides `<SOS>` and `<EOS>`, three classes are predicted, instead of two. This allows to keep the original segmentation 
+Besides `<PAD>`, ``<SOS>` and `<EOS>`, four classes are predicted, instead of two. This allows to keep the original segmentation 
 information:
 - Word Boundary > Word Content (remove a space). Example: `fizo<X>los`
 - Word Content > Word boundary (add a space). Example: `de<X>las`
-- Word Content (do nothing). Example: `la<X>caualleria`
+- Word Content (do nothing). Example: `caua<X>lleria`
+- Space (do nothing). Example: `la<X>cauallería`
 
 ## Training a model
 
