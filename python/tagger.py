@@ -37,7 +37,7 @@ class Tagger:
                              "<SOS>": 1,
                              "<EOS>": 2,
                              "<WC>": 3,
-                             "<WB>": 4,
+                             "<S-s>": 4,
                              "<s-s>": 5,
                              "<s-S>": 6}
         self.reverse_input_vocab = {v: k for k, v in self.input_vocab.items()}
@@ -192,7 +192,7 @@ class Tagger:
                         predicted_line.append(" ")
                     else:
                         predicted_line.append(char)
-                elif mask == "<WB>":
+                elif mask == "<S-s>":
                     if char != "<S>":
                         predicted_line.append(char)
                     else:
