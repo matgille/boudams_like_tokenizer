@@ -65,7 +65,7 @@ class Tagger:
         if len(text_lines) > 500:
             predictions = []
             batch_size = 256
-            steps = len(text_lines) // 256
+            steps = len(text_lines) // batch_size
             for n in tqdm.tqdm(range(steps)):
                 batch = text_lines[n * batch_size: (n * batch_size) + batch_size]
                 predicted_batch = self.tag_and_detect_lb(batch)
@@ -79,8 +79,9 @@ class Tagger:
         zipped = list(zip(line_breaks, predictions))
 
         for index, (xml_element, (text, lb)) in enumerate(zipped[:-1]):
+            # tei:lb stands for line beggining: we have to get the next line
             correct_element, (correct_text, next_lb) = zipped[index + 1]
-            if lb == True:
+            if lb:
                 correct_element.set("break", "y")
             else:
                 correct_element.set("break", "n")
