@@ -7,7 +7,7 @@ from which the code is derived.
 
 ## What differs from Boudams
 
-Besides `<PAD>`, ``<SOS>` and `<EOS>`, four classes are predicted, instead of two. This allows to keep the original segmentation 
+Besides `<PAD>`, `<SOS>` and `<EOS>`, four classes are predicted, instead of two. This allows to keep the original segmentation 
 information:
 - Word Boundary > Word Content (remove a space). Example: `fizo<X>los`
 - Word Content > Word boundary (add a space). Example: `de<X>las`
@@ -25,7 +25,7 @@ Set path to test and train sets in `tokeniser.py` file.
 
 ## Tagging text
 
-The tagger supports txt and xml-tei inputs/outputs.
+The tagger supports txt and xml-tei inputs/outputs (as long as it contains `tei:lb` elements that indicates line begginings).
 It allows to produce an XML file with entities to easier
 indicate the segmentation information.
 
