@@ -99,7 +99,7 @@ class Datafier:
             n = 0
             for idx, char in enumerate(element):
                 if char == "<S-s>":
-                    target[n - 1] = "<WB>"
+                    target[n - 1] = "<S-s>"
                 elif char in ['<SOS>', '<EOS>']:
                     example.append(char)
                     target.append(char)
@@ -119,6 +119,9 @@ class Datafier:
     def pad_and_numerize(self, examples, targets):
         self.max_length_examples = max([len(example) for example in examples])
         max_length_targets = max([len(target) for target in targets])
+        if max_length_targets > 300:
+            print("There is a problem with some line way too long. Please check the datasets.")
+            exit(0)
         pad_value = "<PAD>"
         padded_examples = []
         padded_targets = []
@@ -148,9 +151,9 @@ class Datafier:
                              "<SOS>": 1,
                              "<EOS>": 2,
                              "<WC>": 3,
-                             "<WB>": 4,
-                             "<s-s>": 5,
-                             "<s-S>": 6}
+                             "<S-s>": 4, # No space > space (equivalent to <WB> in boudams)
+                             "<s-s>": 5, # space > space
+                             "<s-S>": 6} # space > no space
 
         n = 5
         data_string = "".join(data).replace(" ", "")
