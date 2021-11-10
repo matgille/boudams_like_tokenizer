@@ -7,7 +7,7 @@ from which the code is derived.
 
 ## What differs from Boudams
 
-Three classes are predicted, instead of two. This allows to keep the original segmentation 
+Besides `<SOS>` and `<EOS>`, three classes are predicted, instead of two. This allows to keep the original segmentation 
 information:
 - Word Boundary > Word Content (remove a space). Example: `fizo<X>los`
 - Word Content > Word boundary (add a space). Example: `de<X>las`
