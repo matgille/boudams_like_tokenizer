@@ -25,11 +25,13 @@ Set path to test and train sets in `tokeniser.py` file.
 
 ## Tagging text
 
-The tagger supports txt and xml-tei inputs/outputs (as long as it contains `tei:lb` elements that indicates line begginings).
+The tagger supports txt and xml-tei inputs/outputs (as long as they contain `tei:lb` elements that indicates line begginings).
 It allows to produce an XML file with entities to easier
-indicate the segmentation information.
+indicate the segmentation information [Stutzmann 2013, Pinche 2017].
 
 
 ## References
 
-Clérice, Thibault. “Evaluating Deep Learning Methods for Word Segmentation of Scripta Continua Texts in Old French and Latin.” Journal of Data Mining & Digital Humanities 2020 (April 7, 2020). Accessed February 26, 2021. https://jdmdh.episciences.org/6264/pdf.
+- Pinche, Ariane. “Édition Nativement Numérique Des Oeuvres Hagiographiques ‘Li Seint Confessor’ de Wauchier de Denain, d’après Le Manuscrit 412 de La Bibliothèque Nationale de France,” 2017. Accessed November 10, 2021. https://hal.archives-ouvertes.fr/hal-01628533.
+- Clérice, Thibault. “Evaluating Deep Learning Methods for Word Segmentation of Scripta Continua Texts in Old French and Latin.” Journal of Data Mining & Digital Humanities 2020 (April 7, 2020). Accessed February 26, 2021. https://jdmdh.episciences.org/6264/pdf.
+- Stutzmann, Dominique. “Ontologie des formes et encodage des textes manuscrits médiévaux.” Document numérique Vol. 16, no. 3 (2013): 81–95.
