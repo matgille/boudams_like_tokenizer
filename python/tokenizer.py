@@ -1,26 +1,22 @@
 import random
 import sys
 
-
-
 import trainer as trainer
-import utils as utils
 import tagger as tagger
 
 # https://github.com/bentrevett/pytorch-seq2seq/blob/master/5%20-%20Convolutional%20Sequence%20to%20Sequence%20Learning.ipynb
 
+train_path = "../.data/fro/train.tsv"
+test_path = "../.data/fro/test.tsv"
 
 train_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/train/train.tsv"
 test_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/test/test.tsv"
 
-# train_path = "../.data/train.txt"
-# test_path = "../.data/test.txt"
 seed = 1234
 random.seed(seed)
 
 entities_mapping = {"add_space": "&rien-esp;",
                     "remove_space": "&esp-rien;"}
-
 
 if sys.argv[1] == "train":
     trainer = trainer.Trainer(batch_size=64,

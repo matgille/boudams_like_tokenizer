@@ -154,18 +154,18 @@ class Tagger:
         # Shape [batch_size*max_length]
         list_of_predictions = higher_prob.view(-1).tolist()
 
-        mask = [self.reverse_target_vocab[pred] for pred in list_of_predictions]
-        splitted_mask = np.split(np.array(mask), input_size)
+        preds = [self.reverse_target_vocab[pred] for pred in list_of_predictions]
+        splitted_preds = np.split(np.array(preds), input_size)
 
         # Length: batch_size lists of max_length size.
-        splitted_mask = [sentence.tolist() for sentence in splitted_mask]
+        splitted_preds = [sentence.tolist() for sentence in splitted_preds]
         result = []
         for sentence_number in range(input_size):
-            current_mask = splitted_mask[sentence_number]
+            current_pred = splitted_preds[sentence_number]
             # Length: max_length
             current_input = formatted_inputs[sentence_number]
 
-            # We split the mask in n examples.
+            # We split the preds in n examples.
             padding_position = utils.find(current_input, "<PAD>")
             eos_position = utils.find(current_input, "<EOS>")
             try:
@@ -176,23 +176,23 @@ class Tagger:
                 exit(0)
             min_pos += 2  # As we got <PAD> and then <SOS> starting the prediction
             sentence = current_input[min_pos: max_pos]
-            predict_mask = current_mask[min_pos: max_pos]
-            sentence_masked_zipped = list(zip(sentence, predict_mask))
+            prediction = current_pred[min_pos: max_pos]
+            sentence_prediction_zipped = list(zip(sentence, prediction))
             predicted_line = []
-            for char, mask in sentence_masked_zipped:
-                if mask == "<WC>":
+            for char, pred in sentence_prediction_zipped:
+                if pred == "<WC>":
                     if char != "<S>":
                         predicted_line.append(char)
                     else:
                         predicted_line.append(" ")
-                elif mask == "<s-s>":
+                elif pred == "<s-s>":
                     # Ici si la machine apprend mal et reconnaît un
                     # espace où il n'y en a pas, on peut avoir des problèmes
                     if char == "<S>":
                         predicted_line.append(" ")
                     else:
                         predicted_line.append(char)
-                elif mask == "<S-s>":
+                elif pred == "<S-s>":
                     if char != "<S>":
                         predicted_line.append(char)
                     else:
@@ -201,7 +201,7 @@ class Tagger:
                         predicted_line.append(self.entities_dict["add_space"])
                     else:
                         predicted_line.append(" ")
-                elif mask == "<s-S>":
+                elif pred == "<s-S>":
                     # Ici aussi
                     if char != "<S>":
                         predicted_line.append(char)
@@ -210,12 +210,12 @@ class Tagger:
                             predicted_line.append(self.entities_dict["remove_space"])
                 else:
                     print("Unknown")
-                    print(mask)
+                    print(pred)
                     predicted_line.append(char)
             result.append("".join(predicted_line))
             if self.debug:
                 print("\n\n--- Début ---\n\n")
-                print(sentence_masked_zipped)
+                print(sentence_prediction_zipped)
                 print("".join(predicted_line))
                 print("\n\n--- Fin ---\n\n")
 

@@ -47,7 +47,7 @@ class Trainer:
         ENC_LAYERS = 10  # number of conv. blocks in encoder
         ENC_KERNEL_SIZE = 5  # must be odd!
         ENC_DROPOUT = 0.25
-        self.TRG_PAD_IDX = 0
+        self.TRG_PAD_IDX = self.target_vocab["<PAD>"]
         self.epochs = epochs
         self.batch_size = batch_size
         self.enc = modele.Encoder(INPUT_DIM, EMB_DIM, HID_DIM, ENC_LAYERS, ENC_KERNEL_SIZE, ENC_DROPOUT, self.device)
@@ -149,18 +149,18 @@ class Trainer:
         correct_predictions = 0
         examples_number = 0
         for i, target in enumerate(targets):
-            mask = [element[0] for element in highger_prob.tolist()[i]]
-            zipped = list(zip(mask, target))
+            predicted_class = [element[0] for element in highger_prob.tolist()[i]]
+            zipped = list(zip(predicted_class, target))
 
             # We have to exclude the evaluation when target is <PAD> because the network has ignored when training;
             # We ignore them too.
-            for prediction, target_mask in zipped:
+            for prediction, target_class in zipped:
                 examples_number += 1
-                if target_mask == self.TRG_PAD_IDX:
+                if target_class == self.TRG_PAD_IDX:
                     examples_number -= 1
                 if prediction == self.TRG_PAD_IDX:
                     pass
-                elif prediction == target_mask:
+                elif prediction == target_class:
                     correct_predictions += 1
 
         accuracy = correct_predictions / examples_number
