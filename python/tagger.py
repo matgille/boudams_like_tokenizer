@@ -110,11 +110,10 @@ class Tagger:
         This function tokenizes a txt file
         """
         with open(txt_file, "r") as input_file:
-            inputs = [line for line in input_file.read().split("\n")]
+            inputs = [line for line in input_file.read().split("\n")][:-1]
             text_lines = [utils.clean_and_normalize_encoding(line) for line in inputs]
             joined = "".join(line for line in text_lines)
             get_chars = list(set([char for char in joined]))
-            print(get_chars)
             text_lines = [line for line in text_lines if line is not None]
         with open(txt_file.replace(".txt", ".norm.txt"), "w") as output_norm_file:
             output_norm_file.write("\n".join(text_lines))
@@ -145,8 +144,8 @@ class Tagger:
         returns: a list of tuples ('predicted line', bool) the latter being the
         decision to break the line or not.
         """
-        input_tensor, formatted_inputs = self.lines_to_tensor(lines_to_predict)
-        input_size = len(formatted_inputs)
+        input_tensor, formatted_inputs_no_unks = self.lines_to_tensor(lines_to_predict)
+        input_size = len(formatted_inputs_no_unks)
         input_tensor = input_tensor.to(self.device)
         prediction = self.model(input_tensor)
         higher_prob = torch.topk(prediction, 1).indices
@@ -163,7 +162,7 @@ class Tagger:
         for sentence_number in range(input_size):
             current_pred = splitted_preds[sentence_number]
             # Length: max_length
-            current_input = formatted_inputs[sentence_number]
+            current_input = formatted_inputs_no_unks[sentence_number]
 
             # We split the preds in n examples.
             padding_position = utils.find(current_input, "<PAD>")
@@ -278,9 +277,8 @@ class Tagger:
                 print(f"String: |{prediction}|")
                 print(f"Regex: |{expression}|")
                 print(borne_sup)
-                print("LB error")
+                print("Line break error")
                 exit(0)
-
             # On se débarrasse de la deuxième partie de la ligne.
             prediction = prediction[:borne_sup]
 
@@ -308,9 +306,13 @@ class Tagger:
         This functions takes a list of lines and converts it to a tensor before prediction
         '''
 
-        max_length = max([len(sentence) for sentence in lines])
+        try:
+            max_length = max([len(sentence) for sentence in lines])
+        except:
+            print("Line break error: please remove last line if empty")
+            exit(0)
         numerical_sentences = []
-        formatted_sentences = []
+        splitted_sentences_no_unk = []
         for line in lines:
             splitted_line = [char for char in line]
             example_length = len(line)
@@ -326,7 +328,10 @@ class Tagger:
             # Let's pad the sentence
             numeric_sentence = numeric_sentence + [self.input_vocab["<EOS>"]] + [self.input_vocab["<PAD>"] for _ in
                                                                                  range(max_length - example_length)]
+            no_unk_splitted_sentence = ["<PAD>", "<SOS>"] + splitted_line + ["<EOS>"] + ["<PAD>" for _ in
+                                                                                 range(max_length - example_length)]
+            splitted_sentences_no_unk.append(no_unk_splitted_sentence)
             numerical_sentences.append(numeric_sentence)
-            formatted_sentences.append([self.reverse_input_vocab[idx] for idx in numeric_sentence])
         sentences_as_tensors = utils.tensorize(numerical_sentences)
-        return sentences_as_tensors, formatted_sentences
+
+        return sentences_as_tensors, splitted_sentences_no_unk
