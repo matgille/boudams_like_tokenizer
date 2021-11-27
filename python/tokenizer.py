@@ -39,6 +39,12 @@ file = args.file
 
 model = "../models/model_tokenizer.best_11_07-11-2021_20:38:28.pt"
 vocab='../models/input_vocab_07-11-2021_20:38:28.voc'
+
+
+#model = "../models/best/best.pt"
+#vocab='../models/best/best.voc'
+
+
 device = 'cuda:0'
 if mode == 'train':
     print("Starting training")
@@ -58,7 +64,7 @@ elif mode == 'tag_xml':
     if not file:
         print(f"Please indicate an input file.")
         exit(0)
-    tagger = tagger.Tagger(device="cpu",
+    tagger = tagger.Tagger(device=device,
                            input_vocab=vocab,
                            model=model,
                            remove_breaks=False,
@@ -74,9 +80,9 @@ elif mode == 'tag_txt':
     if not file:
         print(f"Please indicate an input file.")
         exit(0)
-    tagger = tagger.Tagger(device="cpu",
-                           input_vocab="../models/input_vocab_07-11-2021_20:38:28.voc",
-                           model="../models/model_tokenizer.best_11_07-11-2021_20:38:28.pt",
+    tagger = tagger.Tagger(device='cpu',
+                           input_vocab=vocab,
+                           model=model,
                            remove_breaks=False,
                            debug=False)
 

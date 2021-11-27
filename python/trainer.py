@@ -117,10 +117,10 @@ class Trainer:
         models = glob.glob(f"../models/.tmp/model_tokenizer_*.pt")
         for model in models:
             if model == f"../models/.tmp/model_tokenizer_{best_epoch_accuracy}.pt":
-                shutil.move(model, f"../models/model_tokenizer.best_{best_epoch_accuracy}_{self.timestamp}.pt")
+                shutil.move(model, f"../models/best/best.pt")
             else:
                 os.remove(model)
-        print(f"Saving best model to ../models/model_tokenizer.best_{best_epoch_accuracy}_{self.timestamp}.pt")
+        print(f"Saving best model to ../models/best/best.pt")
 
     def train(self, clip=0.1, shuffle_dataset=True):
         print("Starting training")
