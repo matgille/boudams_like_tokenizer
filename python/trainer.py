@@ -5,6 +5,7 @@ import random
 import shutil
 import numpy as np
 import torch
+import torch.nn as nn
 import utils as utils
 import seq2seq as seq2seq
 import model as modele
@@ -14,10 +15,12 @@ from statistics import mean
 
 
 class Trainer:
-    def __init__(self, epochs, lr, batch_size, train_path, test_path):
+    def __init__(self, epochs, lr, device, batch_size, train_path, test_path, fine_tune, **pretrained_params):
         # First we prepare the corpus
         print("Preparing corpus.")
         now = datetime.now()
+        self.device = device
+
         self.timestamp = now.strftime("%d-%m-%Y_%H:%M:%S")
         datafyer = datafy.Datafier(self.timestamp)
         datafyer.create_train_corpus(train_path)
@@ -32,16 +35,51 @@ class Trainer:
         print(f"Number of test examples: {len(self.test_examples)}")
 
         self.input_vocab = datafyer.input_vocabulary
-        self.target_vocab = datafyer.target_vocabulary
         self.reverse_input_vocab = {v: k for k, v in self.input_vocab.items()}
+
+        if fine_tune:
+            self.fine_tune = fine_tune
+            self.pretrained_model = pretrained_params.get('model', None)
+            self.pretrained_vocab = pretrained_params.get('vocab', None)
+            if self.device == 'cpu':
+                self.pre_trained_model = torch.load(self.pretrained_model, map_location=self.device)
+            else:
+                self.pre_trained_model = torch.load(self.pretrained_model).to(self.device)
+            self.pretrained_vocab = torch.load(self.pretrained_vocab)
+            pre_trained_weights = self.pre_trained_model.encoder.tok_embedding.weight
+            embs_dim = pre_trained_weights.shape[1]
+
+            # We compare the original vocab with the new one to create a merged vocab
+            # but we need to keep the order, i.e. to append new chars at the end of the dict
+            different_chars_pretrained = list(self.pretrained_vocab.keys())
+            different_chars_target = list(self.input_vocab.keys())
+            length_pretrained = len(self.pretrained_vocab)
+            dict_to_update = self.pretrained_vocab.copy()
+            # We only need to expand the vocab: we don't care if the new vocab
+            # is less rich than the pretrained one
+            new_chars = set(different_chars_target) - set(different_chars_pretrained)
+            number_new_chars = len(new_chars)
+            if len(new_chars) != 0:
+                for index, new_char in enumerate(list(new_chars)):
+                    dict_to_update[new_char] = (length_pretrained + index)
+            # We re-write input vocab and reverse input vocab
+            self.input_vocab = dict_to_update.copy()
+            self.reverse_input_vocab = {v: k for k, v in self.input_vocab.items()}
+
+            # We create the updated embs:
+            # First we create randomly initiated tensors corresponding to the number of new chars in the new dataset
+            new_tensors = torch.FloatTensor(number_new_chars, embs_dim).to(self.device)
+
+            # We then add the new vectors to the pre trained weights
+            pretrained_and_new_tensors = torch.cat((pre_trained_weights, new_tensors), 0)
+
+        self.target_vocab = datafyer.target_vocabulary
         self.reverse_target_vocab = {v: k for k, v in self.target_vocab.items()}
 
         self.corpus_size = len(self.train_examples)
         self.steps = self.corpus_size // batch_size
         INPUT_DIM = len(self.input_vocab)
         OUTPUT_DIM = len(self.target_vocab)
-        self.device = 'cuda:0'
-        # self.device = 'cpu'
         EMB_DIM = 256
         HID_DIM = 256  # each conv. layer has 2 * hid_dim filters
         ENC_LAYERS = 10  # number of conv. blocks in encoder
@@ -50,9 +88,20 @@ class Trainer:
         self.TRG_PAD_IDX = self.target_vocab["<PAD>"]
         self.epochs = epochs
         self.batch_size = batch_size
-        self.enc = modele.Encoder(INPUT_DIM, EMB_DIM, HID_DIM, ENC_LAYERS, ENC_KERNEL_SIZE, ENC_DROPOUT, self.device)
-        self.dec = modele.LinearDecoder(EMB_DIM, OUTPUT_DIM)
-        self.model = seq2seq.Seq2Seq(self.enc, self.dec).to(self.device)
+
+        if fine_tune:
+            # If fine tune is True, we take the pre-trained model and modify its embedding layer to match
+            # new vocabulary
+            self.model = self.pre_trained_model
+            self.model.encoder.tok_embedding = nn.Embedding.from_pretrained(pretrained_and_new_tensors)
+        else:
+            # If not, just initialize a new seq2seq model.
+            self.enc = modele.Encoder(INPUT_DIM, EMB_DIM, HID_DIM, ENC_LAYERS, ENC_KERNEL_SIZE, ENC_DROPOUT,
+                                      self.device)
+            self.dec = modele.LinearDecoder(EMB_DIM, OUTPUT_DIM)
+            self.model = seq2seq.Seq2Seq(self.enc, self.dec)
+
+        self.model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.TRG_PAD_IDX)
 
@@ -123,7 +172,6 @@ class Trainer:
             print(f"Loss: {str(loss.item())}")
             self.save_model(epoch_number)
         self.get_best_model()
-
 
     def evaluate(self):
         """

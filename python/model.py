@@ -14,12 +14,12 @@ class Encoder(nn.Module):
                  emb_dim,
                  hid_dim,
                  n_layers,
-
                  kernel_size,
                  dropout,
                  device,
                  max_length=100):
         super().__init__()
+
 
         assert kernel_size % 2 == 1, "Kernel size must be odd!"
 
@@ -53,9 +53,9 @@ class Encoder(nn.Module):
 
         # pos = [batch size, src len]
 
-        # embed tokens and positions
+        # embed tokens
         tok_embedded = self.tok_embedding(src)
-        #pos_embedded = torch.zeros(tok_embedded.shape)
+        # pos_embedded = torch.zeros(tok_embedded.shape)
 
         # tok_embedded = pos_embedded = [batch size, src len, emb dim]
 

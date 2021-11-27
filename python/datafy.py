@@ -164,5 +164,4 @@ class Datafier:
                 input_vocabulary[char] = n
                 n += 1
         torch.save(input_vocabulary, f"../models/input_vocab_{self.timestamp}.voc")
-        print(input_vocabulary)
         return input_vocabulary, target_vocabulary
