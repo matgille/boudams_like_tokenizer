@@ -75,15 +75,18 @@ class Trainer:
 
         self.target_vocab = datafyer.target_vocabulary
         self.reverse_target_vocab = {v: k for k, v in self.target_vocab.items()}
+        torch.save(self.input_vocab, f"../models/best/vocab.voc")
 
         self.corpus_size = len(self.train_examples)
         self.steps = self.corpus_size // batch_size
+
+        self.test_steps = len(self.test_examples) // batch_size
         INPUT_DIM = len(self.input_vocab)
         OUTPUT_DIM = len(self.target_vocab)
         EMB_DIM = 256
         HID_DIM = 256  # each conv. layer has 2 * hid_dim filters
         ENC_LAYERS = 10  # number of conv. blocks in encoder
-        ENC_KERNEL_SIZE = 5  # must be odd!
+        ENC_KERNEL_SIZE = 11  # must be odd!
         ENC_DROPOUT = 0.25
         self.TRG_PAD_IDX = self.target_vocab["<PAD>"]
         self.epochs = epochs
@@ -178,39 +181,46 @@ class Trainer:
         Réécrire la fonction pour comparer directement target et prédiction pour
         produire l'accuracy.
         """
-        value = random.randint(0, len(self.test_examples) - 128)
-        examples = self.test_examples[value:value + 128]
-        targets = self.test_targets[value:value + 128]
+        print("Evaluating model on test data")
+        mean_accuracy = []
+        mean_loss = []
+        for i in tqdm.tqdm(range(self.test_steps)):
+            examples = self.train_examples[self.batch_size * i:self.batch_size * (i + 1)]
+            targets = self.train_targets[self.batch_size * i:self.batch_size * (i + 1)]
+            tensor_examples = utils.tensorize(examples).to(self.device)
+            tensor_target = utils.tensorize(targets).to(self.device)
+            with torch.no_grad():
+                preds = self.model(tensor_examples)
+                # Loss calculation
+                output_dim = preds.shape[-1]
+                output = preds.contiguous().view(-1, output_dim)
+                trg = tensor_target.contiguous().view(-1)
+                loss = self.criterion(output, trg)
 
-        tensor_examples = utils.tensorize(examples).to(self.device)
-        tensor_target = utils.tensorize(targets).to(self.device)
-        with torch.no_grad():
-            preds = self.model(tensor_examples)
-            # Loss calculation
-            output_dim = preds.shape[-1]
-            output = preds.contiguous().view(-1, output_dim)
-            trg = tensor_target.contiguous().view(-1)
-            loss = self.criterion(output, trg)
+            highger_prob = torch.topk(preds, 1).indices
+            # shape [batch_size*max_length, 1]: list of all characters in batch
+            correct_predictions = 0
+            examples_number = 0
+            for i, target in enumerate(targets):
+                predicted_class = [element[0] for element in highger_prob.tolist()[i]]
+                zipped = list(zip(predicted_class, target))
 
-        highger_prob = torch.topk(preds, 1).indices
-        # shape [batch_size*max_length, 1]: list of all characters in batch
-        correct_predictions = 0
-        examples_number = 0
-        for i, target in enumerate(targets):
-            predicted_class = [element[0] for element in highger_prob.tolist()[i]]
-            zipped = list(zip(predicted_class, target))
+                # We have to exclude the evaluation when target is <PAD> because the network has ignored when training;
+                # We ignore them too.
+                for prediction, target_class in zipped:
+                    examples_number += 1
+                    if target_class == self.TRG_PAD_IDX:
+                        examples_number -= 1
+                    if prediction == self.TRG_PAD_IDX:
+                        pass
+                    elif prediction == target_class:
+                        correct_predictions += 1
 
-            # We have to exclude the evaluation when target is <PAD> because the network has ignored when training;
-            # We ignore them too.
-            for prediction, target_class in zipped:
-                examples_number += 1
-                if target_class == self.TRG_PAD_IDX:
-                    examples_number -= 1
-                if prediction == self.TRG_PAD_IDX:
-                    pass
-                elif prediction == target_class:
-                    correct_predictions += 1
+            accuracy = correct_predictions / examples_number
+            mean_accuracy.append(accuracy)
+            mean_loss.append(loss.item())
 
-        accuracy = correct_predictions / examples_number
-        self.accuracies.append(accuracy)
-        print(f"Loss: {loss}\nAccuracy on test set: {accuracy}")
+        global_accuracy = mean(mean_accuracy)
+        global_loss = mean(mean_loss)
+        self.accuracies.append(global_accuracy)
+        print(f"Loss: {global_loss}\nAccuracy on test set: {global_accuracy}")
