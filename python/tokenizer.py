@@ -1,3 +1,4 @@
+import os
 import random
 import sys
 import argparse
@@ -6,16 +7,17 @@ import trainer as trainer
 import tagger as tagger
 
 # https://github.com/bentrevett/pytorch-seq2seq/blob/master/5%20-%20Convolutional%20Sequence%20to%20Sequence%20Learning.ipynb
-
-train_path = "../.data/fro/train.tsv"
-test_path = "../.data/fro/test.tsv"
-
-train_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/train/train.tsv"
-test_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/test/test.tsv"
+# TODO: réfléchir à comment gérer les derniers caractères de la ligne
 
 
-train_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/Val_S/train.txt"
-test_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/Val_S/test.txt"
+
+train_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/regimiento_gold/train/train.txt"
+test_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/regimiento_gold/test/test.txt"
+
+
+train_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/a_z_s_gold/train/train.txt"
+test_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/a_z_s_gold/test/test.txt"
+
 
 
 seed = 1234
@@ -31,24 +33,43 @@ parser.add_argument("-ft", "--fine_tune", default=False,
                     help="Fine-tuning mode: use existing vocab and model.")
 parser.add_argument("-f", "--file", default=False,
                     help="File to tag.")
+parser.add_argument('-o', "--output", help="Output folder")
+parser.add_argument('-d', '--device', help="Device to be used", default='cuda:0')
+parser.add_argument('-e', '--entities', help="Produce XML entities", default=False)
+
+output_dir = "../models/test_a_z"
 
 args = parser.parse_args()
 fine_tune = args.fine_tune
 mode = args.mode
 file = args.file
-
-model = "../models/model_tokenizer.best_11_07-11-2021_20:38:28.pt"
-vocab='../models/input_vocab_07-11-2021_20:38:28.voc'
-
-
-#model = "../models/best/best.pt"
-#vocab='../models/best/best.voc'
+output_dir = args.output
+device = args.device
 
 
-device = 'cuda:0'
+try:
+    os.mkdir(output_dir)
+except:
+    pass
+
+vocab = "../models/saved/a_z/vocab.voc"
+model = "../models/saved/a_z/best.pt"
+
+
+vocab = "../models/saved/val_s/vocab.voc"
+model = "../models/saved/val_s/best.pt"
+
+
+vocab = "../models/saved/a_z_s/vocab.voc"
+model = "../models/.tmp/model_tokenizer_2.pt"
+
+
+
+
+
 if mode == 'train':
     print("Starting training")
-    trainer = trainer.Trainer(batch_size=64,
+    trainer = trainer.Trainer(batch_size=128,
                               epochs=15,
                               lr=0.0005,
                               device=device,
@@ -56,8 +77,10 @@ if mode == 'train':
                               test_path=test_path,
                               fine_tune=fine_tune,
                               model=model,
-                              vocab=vocab)
-    trainer.train()
+                              vocab=vocab,
+                              output_dir=output_dir)
+    trainer.train(shuffle_dataset=True)
+    print(trainer.input_vocab)
 
 
 elif mode == 'tag_xml':
@@ -71,7 +94,6 @@ elif mode == 'tag_xml':
                            xml_entities=True,
                            entities_mapping=entities_mapping,
                            debug=False)
-
     tagger.tokenize_xml(file)
 
 
@@ -80,10 +102,9 @@ elif mode == 'tag_txt':
     if not file:
         print(f"Please indicate an input file.")
         exit(0)
-    tagger = tagger.Tagger(device='cpu',
+    tagger = tagger.Tagger(device=device,
                            input_vocab=vocab,
                            model=model,
                            remove_breaks=False,
                            debug=False)
-
     tagger.tokenize_txt(file)
