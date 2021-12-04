@@ -46,6 +46,8 @@ class Tagger:
         self.entities = xml_entities  # Whether to display original segmentation information with xml entities
         self.debug = debug
         self.entities_dict = entities_mapping
+        print(self.input_vocab)
+        print(self.model.__repr__())
 
     def tokenize_xml(self, xml_file):
         """
@@ -54,9 +56,10 @@ class Tagger:
         tei_namespace = 'http://www.tei-c.org/ns/1.0'
         namespace_declaration = {'tei': tei_namespace}
         with open(xml_file, "r") as input_file:
-            parser = etree.XMLParser(resolve_entities=False)
+            parser = etree.XMLParser(resolve_entities=True, encoding='utf-8')
             f = etree.parse(input_file, parser=parser)
         line_breaks = f.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
+        print([line_breaks[index].xpath("@xml:id")[0] for index, line in enumerate(line_breaks) if line.tail is None])
         text_lines = [utils.clean_and_normalize_encoding(line.tail) for line in line_breaks]
         with open(xml_file.replace('.xml', '.txt'), "w") as output_txt_file:
             output_txt_file.write("\n".join(text_lines))
@@ -93,7 +96,7 @@ class Tagger:
 
         shutil.copy("XML/entities.dtd", xml_file.replace(".xml", ".dtd"))
         with open(xml_file.replace(".xml", ".tokenized.xml"), "w") as output_file:
-            final_string = etree.tostring(f, pretty_print=True).decode().replace("amp;", "")
+            final_string = etree.tostring(f, pretty_print=True, encoding='utf-8', xml_declaration=False).decode('utf-8').replace("amp;", "")
 
             # Producing the DTD declaration
             if self.entities:
@@ -144,6 +147,7 @@ class Tagger:
         returns: a list of tuples ('predicted line', bool) the latter being the
         decision to break the line or not.
         """
+        # TODO: instead of merging two lines in one, merge three and take the middle one as the prediction.
         input_tensor, formatted_inputs_no_unks = self.lines_to_tensor(lines_to_predict)
         input_size = len(formatted_inputs_no_unks)
         input_tensor = input_tensor.to(self.device)
@@ -202,7 +206,7 @@ class Tagger:
                         predicted_line.append(" ")
                 elif pred == "<s-S>":
                     # Ici aussi
-                    if char != "<S>":
+                    if char != " ":
                         predicted_line.append(char)
                     else:
                         if self.entities:
@@ -210,6 +214,7 @@ class Tagger:
                 else:
                     print("Unknown")
                     print(pred)
+                    print(char)
                     predicted_line.append(char)
             result.append("".join(predicted_line))
             if self.debug:
