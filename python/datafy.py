@@ -1,12 +1,39 @@
 import random
 import unicodedata
-
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 import torch
 import utils as utils
 
 
+# https://pytorch.org/tutorials/beginner/basics/data_tutorial.html
+class CustomTextDataset(Dataset):
+    def __init__(self, mode, train_path, test_path):
+        self.datafy = Datafier(train_path, test_path)
+        self.mode = mode
+        if mode == "train":
+            self.datafy.create_train_corpus()
+        else:
+            self.datafy.create_test_corpus()
+
+    def __len__(self):
+        if self.mode == "train":
+            return len(self.datafy.train_padded_examples)
+        else:
+            return len(self.datafy.test_padded_examples)
+
+    def __getitem__(self, idx):
+        if self.mode == "train":
+            examples = self.datafy.train_padded_examples[idx]
+            labels = self.datafy.train_padded_targets[idx]
+        else:
+            examples = self.datafy.test_padded_examples[idx]
+            labels = self.datafy.test_padded_targets[idx]
+        return examples, labels
+
+
 class Datafier:
-    def __init__(self, timestamp):
+    def __init__(self, train_path, test_path):
         self.max_length_examples = 0
         self.frequency_dict = {}
         self.unknown_threshold = 14  # Under this frequency the tokens will be tagged as <UNK>
@@ -16,26 +43,29 @@ class Datafier:
         self.train_padded_targets = []
         self.test_padded_examples = []
         self.test_padded_targets = []
-        self.timestamp = timestamp
+        self.train_path = train_path
+        self.test_path = test_path
+        self.train_data = self.get_data_from_txt(train_path)
+        self.test_data = self.get_data_from_txt(test_path)
+        self.input_vocabulary, self.target_vocabulary = self.create_vocab(self.train_data, self.test_data)
 
-    def create_train_corpus(self, train_path):
-        print("Create train corpus")
-        imported_data = self.get_data_from_txt(train_path)
-        self.input_vocabulary, self.target_vocabulary = self.create_vocab(imported_data)
-        augmented_data = self.augment_data(imported_data, double_corpus=True)
+    def create_train_corpus(self):
+        augmented_data = self.augment_data(self.train_data, double_corpus=True)
         train_examples, train_targets = self.produce_train_corpus(augmented_data)
-        self.train_padded_examples, self.train_padded_targets = self.pad_and_numerize(train_examples, train_targets)
+        train_padded_examples, train_padded_targets = self.pad_and_numerize(train_examples, train_targets)
+        self.train_padded_examples = utils.tensorize(train_padded_examples)
+        self.train_padded_targets = utils.tensorize(train_padded_targets)
 
-    def create_test_corpus(self, test_path):
+    def create_test_corpus(self):
         """
         This function creates the test corpus, and uses the vocabulary of the train set to do so.
         Outputs: tensorized input, tensorized target, formatted input to ease accuracy computation.
         """
-        print("Create test corpus")
-        inputs = self.get_data_from_txt(test_path)
-        treated_inputs = self.augment_data(inputs, double_corpus=False)
+        treated_inputs = self.augment_data(self.test_data, double_corpus=False)
         test_examples, test_targets = self.produce_train_corpus(treated_inputs)
-        self.test_padded_examples, self.test_padded_targets = self.pad_and_numerize(test_examples, test_targets)
+        test_padded_examples, test_padded_targets = self.pad_and_numerize(test_examples, test_targets)
+        self.test_padded_examples = utils.tensorize(test_padded_examples)
+        self.test_padded_targets = utils.tensorize(test_padded_targets)
 
     def get_frequency(self, data_as_string):
         for char in data_as_string:
@@ -140,7 +170,7 @@ class Datafier:
             padded_targets.append(target)
         return padded_examples, padded_targets
 
-    def create_vocab(self, data):
+    def create_vocab(self, train_data, test_data):
         input_vocabulary = {"<PAD>": 0,
                             "<SOS>": 1,
                             "<EOS>": 2,
@@ -151,17 +181,17 @@ class Datafier:
                              "<SOS>": 1,
                              "<EOS>": 2,
                              "<WC>": 3,
-                             "<S-s>": 4, # No space > space (equivalent to <WB> in boudams)
-                             "<s-s>": 5, # space > space
-                             "<s-S>": 6} # space > no space
+                             "<S-s>": 4,  # No space > space (equivalent to <WB> in boudams)
+                             "<s-s>": 5,  # space > space
+                             "<s-S>": 6}  # space > no space
 
         n = 5
-        data_string = "".join(data).replace(" ", "")
+        full_corpus = train_data + test_data
+        data_string = "".join(full_corpus).replace(" ", "")
         for char in data_string:
             try:
                 input_vocabulary[char] == n
             except:
                 input_vocabulary[char] = n
                 n += 1
-        torch.save(input_vocabulary, f"../models/best/vocab.voc")
         return input_vocabulary, target_vocabulary

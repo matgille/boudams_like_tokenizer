@@ -12,33 +12,43 @@ import model as modele
 import datafy as datafy
 import tqdm
 from statistics import mean
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 
 
 class Trainer:
-    def __init__(self, epochs, lr, device, batch_size, train_path, test_path, fine_tune, **pretrained_params):
+    def __init__(self, epochs, lr, device, batch_size, train_path, test_path, fine_tune, output_dir,
+                 **pretrained_params):
         # First we prepare the corpus
-        print("Preparing corpus.")
         now = datetime.now()
         self.device = device
 
         self.timestamp = now.strftime("%d-%m-%Y_%H:%M:%S")
-        datafyer = datafy.Datafier(self.timestamp)
-        datafyer.create_train_corpus(train_path)
-        self.train_examples = datafyer.train_padded_examples
-        self.train_targets = datafyer.train_padded_targets
-        # Il manque à importer le set de test.
-        datafyer.create_test_corpus(test_path)
-        self.test_examples = datafyer.test_padded_examples
-        self.test_targets = datafyer.test_padded_targets
+        train_dataloader = datafy.CustomTextDataset("train", train_path, test_path)
+        test_dataloader = datafy.CustomTextDataset("test", train_path, test_path)
+        self.loaded_train_data = DataLoader(train_dataloader,
+                                            batch_size=batch_size,
+                                            shuffle=True,
+                                            num_workers=4,
+                                            pin_memory=True)
+        self.loaded_test_data = DataLoader(test_dataloader,
+                                           batch_size=batch_size,
+                                           shuffle=True,
+                                           num_workers=4,
+                                           pin_memory=True)
 
-        print(f"Number of train examples: {len(self.train_examples)}")
-        print(f"Number of test examples: {len(self.test_examples)}")
+        self.output_dir = output_dir
 
-        self.input_vocab = datafyer.input_vocabulary
+        print(f"Number of train examples: {len(train_dataloader.datafy.train_padded_examples)}")
+        print(f"Number of test examples: {len(test_dataloader.datafy.test_padded_examples)}")
+
+        self.input_vocab = train_dataloader.datafy.input_vocabulary
         self.reverse_input_vocab = {v: k for k, v in self.input_vocab.items()}
+        self.target_vocab = train_dataloader.datafy.target_vocabulary
+        self.reverse_target_vocab = {v: k for k, v in self.target_vocab.items()}
+
 
         if fine_tune:
-            self.fine_tune = fine_tune
             self.pretrained_model = pretrained_params.get('model', None)
             self.pretrained_vocab = pretrained_params.get('vocab', None)
             if self.device == 'cpu':
@@ -59,6 +69,7 @@ class Trainer:
             # is less rich than the pretrained one
             new_chars = set(different_chars_target) - set(different_chars_pretrained)
             number_new_chars = len(new_chars)
+            print(number_new_chars)
             if len(new_chars) != 0:
                 for index, new_char in enumerate(list(new_chars)):
                     dict_to_update[new_char] = (length_pretrained + index)
@@ -68,19 +79,15 @@ class Trainer:
 
             # We create the updated embs:
             # First we create randomly initiated tensors corresponding to the number of new chars in the new dataset
-            new_tensors = torch.FloatTensor(number_new_chars, embs_dim).to(self.device)
+            new_vectors = torch.FloatTensor(number_new_chars, embs_dim).to(self.device)
 
             # We then add the new vectors to the pre trained weights
-            pretrained_and_new_tensors = torch.cat((pre_trained_weights, new_tensors), 0)
+            pretrained_and_new_tensors = torch.cat((pre_trained_weights, new_vectors), 0)
 
-        self.target_vocab = datafyer.target_vocabulary
-        self.reverse_target_vocab = {v: k for k, v in self.target_vocab.items()}
-        torch.save(self.input_vocab, f"../models/best/vocab.voc")
-
-        self.corpus_size = len(self.train_examples)
+        self.corpus_size = train_dataloader.__len__()
         self.steps = self.corpus_size // batch_size
 
-        self.test_steps = len(self.test_examples) // batch_size
+        self.test_steps = test_dataloader.__len__() // batch_size
         INPUT_DIM = len(self.input_vocab)
         OUTPUT_DIM = len(self.target_vocab)
         EMB_DIM = 256
@@ -107,7 +114,7 @@ class Trainer:
         self.model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.TRG_PAD_IDX)
-
+        print(self.model.__repr__())
         self.accuracies = []
 
     def save_model(self, epoch):
@@ -120,37 +127,30 @@ class Trainer:
         models = glob.glob(f"../models/.tmp/model_tokenizer_*.pt")
         for model in models:
             if model == f"../models/.tmp/model_tokenizer_{best_epoch_accuracy}.pt":
-                shutil.move(model, f"../models/best/best.pt")
+                shutil.move(model, f"{self.output_dir}/best.pt")
             else:
                 os.remove(model)
-        print(f"Saving best model to ../models/best/best.pt")
+        print(f"Saving best model to {self.output_dir}/best.pt")
 
     def train(self, clip=0.1, shuffle_dataset=True):
         print("Starting training")
+        torch.save(self.input_vocab, f"{self.output_dir}/vocab.voc")
         self.model.train()
         epoch_loss = 0
-        if shuffle_dataset:
-            example_target = list(zip(self.train_examples, self.train_targets))
-            random.shuffle(example_target)
-            self.train_examples, self.train_targets = zip(*example_target)
         print("Evaluating randomly intiated model")
         self.evaluate()
         for epoch in range(self.epochs):
             epoch_number = epoch + 1
             print(f"Epoch {str(epoch_number)}")
             epoch_accuracies = []
-            for i in tqdm.tqdm(range(self.steps), unit_scale=self.batch_size):
-                examples = self.train_examples[self.batch_size * i:self.batch_size * (i + 1)]
-                targets = self.train_targets[self.batch_size * i:self.batch_size * (i + 1)]
-                tensor_examples = utils.tensorize(examples)
-                tensor_targets = utils.tensorize(targets)
-
+            for examples, targets in tqdm.tqdm(self.loaded_train_data, unit_scale=self.batch_size):
                 # Shape [batch_size, max_length]
-                tensor_examples = tensor_examples.to(self.device)
+                tensor_examples = examples.to(self.device)
                 # Shape [batch_size, max_length]
-                tensor_targets = tensor_targets.to(self.device)
+                tensor_targets = targets.to(self.device)
 
-                self.optimizer.zero_grad()
+                for param in self.model.parameters():
+                    param.grad = None
 
                 # Shape [batch_size, max_length, output_dim]
                 output = self.model(tensor_examples)
@@ -172,7 +172,6 @@ class Trainer:
 
             # We compute accuracy on last batch of data
             self.evaluate()
-            print(f"Loss: {str(loss.item())}")
             self.save_model(epoch_number)
         self.get_best_model()
 
@@ -182,13 +181,12 @@ class Trainer:
         produire l'accuracy.
         """
         print("Evaluating model on test data")
-        mean_accuracy = []
-        mean_loss = []
-        for i in tqdm.tqdm(range(self.test_steps)):
-            examples = self.train_examples[self.batch_size * i:self.batch_size * (i + 1)]
-            targets = self.train_targets[self.batch_size * i:self.batch_size * (i + 1)]
-            tensor_examples = utils.tensorize(examples).to(self.device)
-            tensor_target = utils.tensorize(targets).to(self.device)
+        epoch_accuracy = []
+        epoch_loss = []
+        for examples, targets in tqdm.tqdm(self.loaded_test_data, unit_scale=self.batch_size):
+            # https://discuss.pytorch.org/t/should-we-set-non-blocking-to-true/38234/3
+            tensor_examples = examples.to(self.device, non_blocking=True)
+            tensor_target = targets.to(self.device, non_blocking=True)
             with torch.no_grad():
                 preds = self.model(tensor_examples)
                 # Loss calculation
@@ -217,10 +215,10 @@ class Trainer:
                         correct_predictions += 1
 
             accuracy = correct_predictions / examples_number
-            mean_accuracy.append(accuracy)
-            mean_loss.append(loss.item())
+            epoch_accuracy.append(accuracy)
+            epoch_loss.append(loss.item())
 
-        global_accuracy = mean(mean_accuracy)
-        global_loss = mean(mean_loss)
+        global_accuracy = mean(epoch_accuracy)
+        global_loss = mean(epoch_loss)
         self.accuracies.append(global_accuracy)
         print(f"Loss: {global_loss}\nAccuracy on test set: {global_accuracy}")
