@@ -25,7 +25,7 @@ Set path to test and train sets in `tokeniser.py` file.
 
 ## Tagging text
 
-The tagger supports txt and xml-tei inputs/outputs (as long as they contain `tei:lb` elements that indicates line begginings).
+The tagger supports txt and xml-tei inputs/outputs (as long as they contain `tei:lb` elements that mark line begginings).
 It allows to produce an XML file with entities to easier
 indicate the segmentation information [Stutzmann 2013, Pinche 2017].
 
