@@ -23,7 +23,7 @@ Set path to test and train sets in `tokeniser.py` file.
 `python tokeniser.py train`
 
 
-## Tagging text
+## Tagging text and xml-tei
 
 The tagger supports txt and xml-tei inputs/outputs (as long as they contain `tei:lb` elements that mark line begginings).
 It allows to produce an XML file with entities to easier
