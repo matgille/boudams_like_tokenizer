@@ -1,18 +1,18 @@
 # Boudams like segmenter
 
-Fork from Thibault Clérice's Boudams tokenizer [Clérice 2020] ([repo](https://github.com/PonteIneptique/boudams)).
+Fork from Thibault Clérice's Boudams tokenizer [Clérice 2020] ([repo](https://github.com/PonteIneptique/boudams)). 
 
 See also [Ben Trevett's notebook](https://github.com/bentrevett/pytorch-seq2seq/blob/master/5%20-%20Convolutional%20Sequence%20to%20Sequence%20Learning.ipynb)
-from which the code is derived. 
+from which part of the code is derived. 
 
 ## What differs from Boudams
 
 Besides `<PAD>`, `<SOS>` and `<EOS>`, four classes are predicted, instead of two. This allows to keep the original segmentation 
 information:
-- Word Boundary > Word Content (remove a space). Example: `fizo<X>los`
-- Word Content > Word boundary (add a space). Example: `de<X>las`
-- Word Content (do nothing). Example: `caua<X>lleria`
-- Space (do nothing). Example: `la<X>cauallería`
+- Word Boundary > Word Content (remove a space). Class `<S-s>` Example: `fizo< >los`
+- Word Content > Word boundary (add a space). Class  `<s-S>` Example: `d<e>las`
+- Word Content (do nothing). Class `<S-S>` Example: `caua<u>lleria`
+- Space (do nothing). Class `<s-s>` Example: `la< >cauallería`
 
 ## Training a model
 
