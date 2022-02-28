@@ -12,7 +12,7 @@ information:
 - Word Boundary > Word Content (remove a space). Class `<S-s>` Example: `fizo< >los`
 - Word Content > Word boundary (add a space). Class  `<s-S>` Example: `d<e>las`
 - Word Content (do nothing). Class `<S-S>` Example: `caua<u>lleria`
-- Space (do nothing). Class `<s-s>` Example: `la< >cauallería`
+- Word Boundary (do nothing). Class `<s-s>` Example: `la< >cauallería`
 
 ## Training a model
 
