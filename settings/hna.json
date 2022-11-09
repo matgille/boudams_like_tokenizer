@@ -1,0 +1,6 @@
+{
+  "train_path" : "/projects/users/mgillele/data_segmentation/corpus/train/train.txt",
+  "test_path" : "/projects/users/mgillele/data_segmentation/corpus/test/test.txt",
+  "model" : "/projects/users/mgillele/humanites_numeriques_appliquees/cours_hn_2022/segmentation/modelsbest.pt",
+  "vocab" : "/projects/users/mgillele/humanites_numeriques_appliquees/cours_hn_2022/segmentation/modelsvocab.voc"
+}
