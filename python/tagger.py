@@ -268,7 +268,7 @@ class Tagger:
                     string_to_match)
             else:
                 expression = "\s*".join(string_to_match)
-            regexp = re.compile(expression)
+            regexp = re.compile(expression.replace("(", "\(").replace(")", "\)"))
             result = regexp.search(prediction)
             try:
                 borne_sup = result.span(0)[1]
