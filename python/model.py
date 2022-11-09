@@ -4,10 +4,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-
-
 class Encoder(nn.Module):
     def __init__(self,
                  input_dim,
@@ -16,8 +12,7 @@ class Encoder(nn.Module):
                  n_layers,
                  kernel_size,
                  dropout,
-                 device,
-                 max_length=100):
+                 device):
         super().__init__()
 
 
@@ -43,8 +38,8 @@ class Encoder(nn.Module):
     def forward(self, src):
         # src = [batch size, src len]
 
-        batch_size = src.shape[0]
-        src_len = src.shape[1]
+        # batch_size = src.shape[0]
+        # src_len = src.shape[1]
 
         # create position tensor
         # pos = torch.arange(0, src_len).unsqueeze(0).repeat(batch_size, 1).to(self.device)
@@ -126,5 +121,4 @@ class LinearDecoder(nn.Module):
         self.decoder = nn.Linear(enc_dim, out_dim)
 
     def forward(self, enc_outs):
-        linear_out = self.decoder(enc_outs)
-        return linear_out
+        return self.decoder(enc_outs)

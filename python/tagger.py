@@ -26,8 +26,10 @@ class Tagger:
                  remove_breaks: bool,
                  debug: bool,
                  entities_mapping: dict = {},
-                 xml_entities: bool = False):
+                 xml_entities: bool = False,
+                 lb_only:bool = False):
         self.device = device
+        self.lb_only = lb_only # whether to detect hyphens only or not.
         if self.device == 'cpu':
             self.model = torch.load(model, map_location=self.device)
         else:
@@ -80,19 +82,26 @@ class Tagger:
             predictions = self.tag_and_detect_lb(text_lines)
 
         zipped = list(zip(line_breaks, predictions))
-
+        print("Starting tokenisation")
         for index, (xml_element, (text, lb)) in enumerate(zipped[:-1]):
             # tei:lb stands for line beggining: we have to get the next line
             correct_element, (correct_text, next_lb) = zipped[index + 1]
             if lb:
-                correct_element.set("break", "y")
+                correct_element.set("break", "yes")
             else:
-                correct_element.set("break", "n")
-            correct_element.tail = correct_text
+                correct_element.set("break", "no")
+            if self.lb_only:
+                correct_element.tail = text_lines[index]
+            else:
+                correct_element.tail = correct_text
 
         # Management of last tei:lb
         last_element, (last_text_node, last_lb) = zipped[-1]
-        last_element.tail = last_text_node
+
+        if self.lb_only:
+            last_element.tail = text_lines[-1]
+        else:
+            last_element.tail = last_text_node
 
         shutil.copy("XML/entities.dtd", xml_file.replace(".xml", ".dtd"))
         with open(xml_file.replace(".xml", ".tokenized.xml"), "w") as output_file:
@@ -101,25 +110,25 @@ class Tagger:
             # Producing the DTD declaration
             if self.entities:
                 final_string = final_string.replace("<TEI",
-                                                    f"<?xml version='1.0' encoding='UTF-8'?>\n"
+                                                    #f"<?xml version='1.0' encoding='UTF-8'?>\n"
                                                     f"<!DOCTYPE TEI SYSTEM '{xml_file.split('/')[-1].replace('.xml', '')}.dtd'>\n"
                                                     f"<TEI")
                 final_string.replace("rien-esp", self.entities_dict["add_space"][1:-1])
                 final_string.replace("esp-rien", self.entities_dict["remove_space"][1:-1])
             output_file.write(final_string)
+            print(f"Saved file to {xml_file.replace('.xml', '.tokenized.xml')}")
 
     def tokenize_txt(self, txt_file):
         """
         This function tokenizes a txt file
         """
+        print(self.lb_only)
         with open(txt_file, "r") as input_file:
             inputs = [line for line in input_file.read().split("\n")][:-1]
             text_lines = [utils.clean_and_normalize_encoding(line) for line in inputs]
             joined = "".join(line for line in text_lines)
             get_chars = list(set([char for char in joined]))
             text_lines = [line for line in text_lines if line is not None]
-        with open(txt_file.replace(".txt", ".norm.txt"), "w") as output_norm_file:
-            output_norm_file.write("\n".join(text_lines))
 
         # To avoid out of memory problem.
         if len(text_lines) > 500:
@@ -135,7 +144,11 @@ class Tagger:
             predictions.extend(self.tag_and_detect_lb(text_lines[(n + 1) * batch_size:-1]))
         else:
             predictions = self.tag_and_detect_lb(text_lines)
-        predictions = [f'{text}-' if line_break is False else text for (text, line_break) in predictions]
+        print(self.lb_only)
+        if self.lb_only:
+            predictions = [f'{text_lines[idx]}-' if line_break is False else text_lines[idx] for idx, (text, line_break) in enumerate(predictions)]
+        else:
+            predictions = [f'{text}-' if line_break is False else text for (text, line_break) in predictions]
         with open(txt_file.replace('.txt', '.tokenized.txt'), "w") as input_file:
             input_file.write("\n".join(predictions))
         print("Done!")

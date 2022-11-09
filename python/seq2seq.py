@@ -24,9 +24,8 @@ class Seq2Seq(nn.Module):
         # output is a batch of predictions for each word in the trg sentence
         # attention a batch of attention scores across the src sentence for
         #  each word in the trg sentence
-        output = self.decoder(encoder_conved)
 
         # output = [batch size, trg len - 1, output dim]
         # attention = [batch size, trg len - 1, src len]
 
-        return output
+        return self.decoder(encoder_conved)

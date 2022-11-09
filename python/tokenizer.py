@@ -1,18 +1,15 @@
 import os
 import random
-import sys
 import argparse
+import json
 
 import trainer as trainer
 import tagger as tagger
 
 # https://github.com/bentrevett/pytorch-seq2seq/blob/master/5%20-%20Convolutional%20Sequence%20to%20Sequence%20Learning.ipynb
 
-train_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/regimiento_gold/train/train.txt"
-test_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/regimiento_gold/test/test.txt"
 
-train_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/a_z_s_gold/train/train.txt"
-test_path = "/home/mgl/Bureau/These/datasets/segmentation_segmentor/datasets/a_z_s_gold/test/test.txt"
+
 
 seed = 1234
 random.seed(seed)
@@ -31,35 +28,40 @@ parser.add_argument('-o', "--output", help="Output folder")
 parser.add_argument('-d', '--device', help="Device to be used", default='cuda:0')
 parser.add_argument('-e', '--entities', help="Produce XML entities", default=False)
 parser.add_argument('-b', '--batch_size', help="Sets batch size", default=64, type=int)
+parser.add_argument('-p', '--parameters', help="Path to params files")
+parser.add_argument('-v', '--vocabulary', help="Path to vocabulary", default=None)
+parser.add_argument('-m', '--model', help="Path to model", default=None)
+parser.add_argument('-ho', '--hyphens_only', help="Dectect only hyphens when tagging", default=False)
 
-output_dir = "../models/test_a_z"
 
 args = parser.parse_args()
-fine_tune = args.fine_tune
+fine_tune = True if args.fine_tune == "True" else False
 batch_size = args.batch_size
+entities = args.entities
 mode = args.mode
 file = args.file
 output_dir = args.output
+parameters = args.parameters
 device = args.device
+lb_only = (args.hyphens_only == "True")
 
 try:
     os.mkdir(output_dir)
 except:
     pass
 
-vocab = "../models/saved/a_z/vocab.voc"
-model = "../models/saved/a_z/best.pt"
-
-vocab = "../models/saved/val_s/vocab.voc"
-model = "../models/saved/val_s/best.pt"
-
-vocab = "../models/saved/a_z_s/vocab.voc"
-model = "../models/.tmp/model_tokenizer_2.pt"
-
 if mode == 'train':
+    with open(parameters, "r") as conf_file:
+        conf_dict = json.load(conf_file)
+    train_path = conf_dict["train_path"]
+    test_path = conf_dict["test_path"]
+    model = conf_dict["model"]
+    vocab = conf_dict["vocab"]
+
+
     print("Starting training")
     trainer = trainer.Trainer(batch_size=batch_size,
-                              epochs=15,
+                              epochs=20,
                               lr=0.0005,
                               device=device,
                               train_path=train_path,
@@ -68,11 +70,12 @@ if mode == 'train':
                               model=model,
                               vocab=vocab,
                               output_dir=output_dir)
-    trainer.train(shuffle_dataset=True)
-    print(trainer.input_vocab)
+    trainer.train()
 
 
 elif mode == 'tag_xml':
+    vocab = args.vocabulary
+    model = args.model
     if not file:
         print(f"Please indicate an input file.")
         exit(0)
@@ -80,7 +83,7 @@ elif mode == 'tag_xml':
                            input_vocab=vocab,
                            model=model,
                            remove_breaks=False,
-                           xml_entities=True,
+                           xml_entities=entities,
                            entities_mapping=entities_mapping,
                            debug=False)
     tagger.tokenize_xml(file)
@@ -88,6 +91,8 @@ elif mode == 'tag_xml':
 
 
 elif mode == 'tag_txt':
+    vocab = args.vocabulary
+    model = args.model
     if not file:
         print(f"Please indicate an input file.")
         exit(0)
@@ -95,5 +100,6 @@ elif mode == 'tag_txt':
                            input_vocab=vocab,
                            model=model,
                            remove_breaks=False,
-                           debug=False)
+                           debug=False,
+                           lb_only=lb_only)
     tagger.tokenize_txt(file)

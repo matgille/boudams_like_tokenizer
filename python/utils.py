@@ -26,6 +26,13 @@ def string_to_text(string, path):
         output_file.write(string)
 
 
+def get_vocab(data) -> set:
+    data_string = [char for char in "".join(data).replace(" ", "")]
+
+    return set(data_string)
+
+
+
 def normalize(line: str):
     # NFD semble la meilleure normalisation pour l'instant.
     # Voir https://unicode.org/reports/tr15/
@@ -37,12 +44,15 @@ def remove_multiple_spaces(text: str):
 
 
 def clean_and_normalize_encoding(line: str):
-    if re.match(f'^\s+$', line):
-        norm_line = None
+    if line:
+        if re.match(f'^\s+$', line):
+            norm_line = None
+        else:
+            norm_line = re.sub("\s+", " ", line)
+            norm_line = normalize(norm_line)
+            # norm_line = "".join([char for char in norm_line])
     else:
-        norm_line = re.sub("\s+", " ", line)
-        norm_line = normalize(norm_line)
-        # norm_line = "".join([char for char in norm_line])
+        norm_line = ""
 
     return norm_line
 
@@ -64,3 +74,4 @@ def entities_decl():
     "<!ENTITY esp-rien '<choice xmlns='http://www.tei-c.org/ns/1.0'><orig> </orig><reg/></choice>'>" \
     "<!ENTITY rien-esp '<choice xmlns='http://www.tei-c.org/ns/1.0'><orig/><reg><space/></reg></choice>'>" \
     "]>"
+
