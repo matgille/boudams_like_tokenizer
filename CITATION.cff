@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Gille Levenson"
+  given-names: "Matthias"
+  orcid: "https://orcid.org/0000-0001-9488-5986"
+title: "Boudams-like segmenter"
+version: 2.0.4
+date-released: 2021-11-7
+url: "https://github.com/matgille/boudams_like_tokenizer"
+
