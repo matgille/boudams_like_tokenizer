@@ -28,9 +28,9 @@ class Tagger:
                  debug: bool,
                  entities_mapping: dict = {},
                  xml_entities: bool = False,
-                 lb_only:bool = False):
+                 lb_only: bool = False):
         self.device = device
-        self.lb_only = lb_only # whether to detect hyphens only or not.
+        self.lb_only = lb_only  # whether to detect hyphens only or not.
         if self.device == 'cpu':
             self.model = torch.load(model, map_location=self.device)
         else:
@@ -46,13 +46,13 @@ class Tagger:
         self.reverse_input_vocab = {v: k for k, v in self.input_vocab.items()}
         self.reverse_target_vocab = {v: k for k, v in self.target_vocab.items()}
         self.remove_breaks = remove_breaks  # Keep the linebreaks in prediction?
-        self.entities = True if xml_entities == 'True' else False # Whether to display original segmentation information with xml entities
+        self.entities = True if xml_entities == 'True' else False  # Whether to display original segmentation information with xml entities
         self.debug = debug
         self.entities_dict = entities_mapping
         print(self.input_vocab)
         print(self.model.__repr__())
 
-    def tokenize_xml(self, xml_file):
+    def tokenize_xml(self, xml_file, batch_size):
         """
         This function tokenizes an xml file
         """
@@ -73,7 +73,6 @@ class Tagger:
         # To avoid out of memory problem.
         if len(text_lines) > 500:
             predictions = []
-            batch_size = 256
             steps = len(text_lines) // batch_size
             for n in tqdm.tqdm(range(steps)):
                 batch = text_lines[n * batch_size: (n * batch_size) + batch_size]
@@ -109,18 +108,44 @@ class Tagger:
         if self.entities:
             shutil.copy("XML/entities.dtd", xml_file.replace(".xml", ".dtd"))
         with open(xml_file.replace(".xml", ".tokenized.xml"), "w") as output_file:
-            final_string = etree.tostring(f, pretty_print=True, encoding='utf-8', xml_declaration=False).decode('utf-8').replace("amp;", "")
+            final_string = etree.tostring(f, pretty_print=True, encoding='utf-8', xml_declaration=False).decode(
+                'utf-8').replace("amp;", "")
 
             # Producing the DTD declaration
             if self.entities:
                 final_string = final_string.replace("<TEI",
-                                                    #f"<?xml version='1.0' encoding='UTF-8'?>\n"
+                                                    # f"<?xml version='1.0' encoding='UTF-8'?>\n"
                                                     f"<!DOCTYPE TEI SYSTEM '{xml_file.split('/')[-1].replace('.xml', '')}.dtd'>\n"
                                                     f"<TEI")
                 final_string.replace("rien-esp", self.entities_dict["add_space"][1:-1])
                 final_string.replace("esp-rien", self.entities_dict["remove_space"][1:-1])
             output_file.write(final_string)
             print(f"Saved file to {xml_file.replace('.xml', '.tokenized.xml')}")
+            self.test_result(xml_file)
+
+    def test_result(self, xml_file):
+        tei_namespace = 'http://www.tei-c.org/ns/1.0'
+        namespace_declaration = {'tei': tei_namespace}
+        with open(xml_file, "r") as input_file:
+            parser = etree.XMLParser(resolve_entities=True, encoding='utf-8')
+            f_orig = etree.parse(input_file, parser=parser)
+        line_breaks = f_orig.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
+
+        with open(xml_file.replace('.xml', '.tokenized.xml'), "r") as input_file:
+            parser = etree.XMLParser(resolve_entities=True, encoding='utf-8')
+            f = etree.parse(input_file, parser=parser)
+        line_breaks_tokenized = f.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
+
+        assert len(line_breaks) == len(line_breaks_tokenized)
+
+        text_lines = [line.tail for line in line_breaks]
+        text_lines_tokenized = [line.tail for line in line_breaks_tokenized]
+
+        comparison_list = list(zip(text_lines, text_lines_tokenized))
+
+        first_discordant_line_pos = \
+        [line for index, (line, tokenized_line) in enumerate(comparison_list) if line.replace(" ", "") != tokenized_line.replace(" ", "")][0]
+        print(f"Problem with line: {first_discordant_line_pos}")
 
     def tokenize_txt(self, txt_file):
         """
@@ -150,7 +175,8 @@ class Tagger:
             predictions = self.tag_and_detect_lb(text_lines)
         print(self.lb_only)
         if self.lb_only:
-            predictions = [f'{text_lines[idx]}-' if line_break is False else text_lines[idx] for idx, (text, line_break) in enumerate(predictions)]
+            predictions = [f'{text_lines[idx]}-' if line_break is False else text_lines[idx] for idx, (text, line_break)
+                           in enumerate(predictions)]
         else:
             predictions = [f'{text}-' if line_break is False else text for (text, line_break) in predictions]
         with open(txt_file.replace('.txt', '.tokenized.txt'), "w") as input_file:
@@ -353,7 +379,8 @@ class Tagger:
             numeric_sentence = numeric_sentence + [self.input_vocab["<EOS>"]] + [self.input_vocab["<PAD>"] for _ in
                                                                                  range(max_length - example_length)]
             no_unk_splitted_sentence = ["<PAD>", "<SOS>"] + splitted_line + ["<EOS>"] + ["<PAD>" for _ in
-                                                                                 range(max_length - example_length)]
+                                                                                         range(
+                                                                                             max_length - example_length)]
             splitted_sentences_no_unk.append(no_unk_splitted_sentence)
             numerical_sentences.append(numeric_sentence)
         sentences_as_tensors = utils.tensorize(numerical_sentences)

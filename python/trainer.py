@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 
 
 class Trainer:
-    def __init__(self, epochs, lr, device, batch_size, train_path, test_path, fine_tune, output_dir, workers,
+    def __init__(self, epochs, lr, device, batch_size, train_path, test_path, fine_tune, output_dir, workers, kernel_size,
                  **pretrained_params):
         # First we prepare the corpus
         now = datetime.now()
@@ -99,7 +99,7 @@ class Trainer:
             EMB_DIM = 256
             HID_DIM = 256  # each conv. layer has 2 * hid_dim filters
             ENC_LAYERS = 10  # number of conv. blocks in encoder
-            ENC_KERNEL_SIZE = 9  # must be odd!
+            ENC_KERNEL_SIZE = kernel_size  # must be odd!
             ENC_DROPOUT = 0.25
 
             # If not, just initialize a new seq2seq model.

@@ -15,7 +15,6 @@ class Encoder(nn.Module):
                  device):
         super().__init__()
 
-
         assert kernel_size % 2 == 1, "Kernel size must be odd!"
 
         self.device = device
@@ -34,6 +33,11 @@ class Encoder(nn.Module):
                                     for _ in range(n_layers)])
 
         self.dropout = nn.Dropout(dropout)
+
+        # transformerEncoderLayer = torch.nn.TransformerEncoderLayer(d_model=hid_dim, nhead=2)
+
+        # self.transformerEncoder = nn.TransformerEncoder(transformerEncoderLayer,
+                                                        # num_layers=2)
 
     def forward(self, src):
         # src = [batch size, src len]
@@ -101,10 +105,11 @@ class Encoder(nn.Module):
         # elementwise sum output (conved) and input (embedded) to be used for attention
         combined = (conved + embedded) * self.scale
 
+        # transformed = self.transformerEncoder(conved)
+
         # combined = [batch size, src len, emb dim]
 
-        return conved, combined
-
+        return combined, combined
 
 
 class LinearDecoder(nn.Module):
@@ -116,6 +121,7 @@ class LinearDecoder(nn.Module):
     label_encoder : LabelEncoder
     in_features : int, input dimension
     """
+
     def __init__(self, enc_dim, out_dim):
         super().__init__()
         self.decoder = nn.Linear(enc_dim, out_dim)
