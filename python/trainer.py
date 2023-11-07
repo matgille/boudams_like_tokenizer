@@ -207,12 +207,12 @@ class Trainer:
             correct_predictions = 0
             examples_number = 0
             Timer.start_timer("acc")
-            for i, target in enumerate(targets):
+            for i, target in enumerate(targets[:10]):
                 Timer.start_timer("classes")
                 predicted_class = [element[0] for element in highger_prob.tolist()[i]]
                 zipped = list(zip(predicted_class, target))
-                print("Predicted classes time:")
-                Timer.start_timer("classes")
+                # print("Predicted classes time:")
+                # Timer.stop_timer("classes")
 
                 # We have to exclude the evaluation when target is <PAD> because the network has ignored when training;
                 # We ignore them too.
@@ -225,8 +225,9 @@ class Trainer:
                         pass
                     elif prediction == target_class:
                         correct_predictions += 1
-                print("Accuracy only computation time:")
-                Timer.start_timer("accuracy_comp")
+                # print("Accuracy only computation time:")
+                # Timer.stop_timer("accuracy_comp")
+                # exit(0)
 
             print("Full accuracy computation time:")
             Timer.stop_timer("acc")
