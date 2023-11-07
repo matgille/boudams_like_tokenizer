@@ -34,12 +34,12 @@ class Trainer:
         self.loaded_train_data = DataLoader(train_dataloader,
                                             batch_size=batch_size,
                                             shuffle=True,
-                                            num_workers=0,
+                                            num_workers=8,
                                             pin_memory=False)
         self.loaded_test_data = DataLoader(test_dataloader,
                                            batch_size=batch_size,
                                            shuffle=False,
-                                           num_workers=0,
+                                           num_workers=8,
                                            pin_memory=False)
 
         self.output_dir = output_dir
