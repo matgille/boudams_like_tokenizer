@@ -183,10 +183,12 @@ class Trainer:
         print("Evaluating model on test data")
         epoch_accuracy = []
         epoch_loss = []
+        print("Prediction time:")
         Timer = utils.Timer()
         for examples, targets in tqdm.tqdm(self.loaded_test_data, unit_scale=self.batch_size):
             # https://discuss.pytorch.org/t/should-we-set-non-blocking-to-true/38234/3
             Timer.start_timer()
+            print(f"Number of example in batch: {len(examples)}")
             if not self.all_dataset_on_device:
                 tensor_examples = examples.to(self.device)
                 tensor_target = targets.to(self.device)
@@ -203,6 +205,7 @@ class Trainer:
             # shape [batch_size*max_length, 1]: list of all characters in batch
             correct_predictions = 0
             examples_number = 0
+            print("Accuracy computation time:")
             Timer.start_timer()
             for i, target in enumerate(targets):
                 predicted_class = [element[0] for element in highger_prob.tolist()[i]]
