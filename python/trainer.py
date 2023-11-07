@@ -16,10 +16,11 @@ from torch.utils.data import DataLoader
 
 class Trainer:
     def __init__(self, epochs, lr, device, batch_size, train_path, test_path, fine_tune, output_dir,
-                 **pretrained_params):
+                 **pretrained_params, workers):
         # First we prepare the corpus
         now = datetime.now()
         self.device = device
+        self.workers = workers
         max_length = 60
         self.timestamp = now.strftime("%d-%m-%Y_%H:%M:%S")
         if fine_tune:
@@ -34,12 +35,12 @@ class Trainer:
         self.loaded_train_data = DataLoader(train_dataloader,
                                             batch_size=batch_size,
                                             shuffle=True,
-                                            num_workers=8,
+                                            num_workers=self.workers,
                                             pin_memory=False)
         self.loaded_test_data = DataLoader(test_dataloader,
                                            batch_size=batch_size,
                                            shuffle=False,
-                                           num_workers=8,
+                                           num_workers=self.workers,
                                            pin_memory=False)
 
         self.output_dir = output_dir

@@ -31,6 +31,7 @@ parser.add_argument('-b', '--batch_size', help="Sets batch size", default=64, ty
 parser.add_argument('-p', '--parameters', help="Path to params files")
 parser.add_argument('-v', '--vocabulary', help="Path to vocabulary", default=None)
 parser.add_argument('-m', '--model', help="Path to model", default=None)
+parser.add_argument('-w', '--workers', help="Number of workers for dataloading", default=0, type=int)
 parser.add_argument('-ho', '--hyphens_only', help="Dectect only hyphens when tagging", default=False)
 
 
@@ -44,6 +45,7 @@ output_dir = args.output
 parameters = args.parameters
 device = args.device
 lb_only = (args.hyphens_only == "True")
+workers = int(args.workers)
 
 try:
     os.mkdir(output_dir)
@@ -69,7 +71,8 @@ if mode == 'train':
                               fine_tune=fine_tune,
                               model=model,
                               vocab=vocab,
-                              output_dir=output_dir)
+                              output_dir=output_dir, 
+                              workers=workers)
     trainer.train()
 
 
