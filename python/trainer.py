@@ -181,6 +181,7 @@ class Trainer:
         produire l'accuracy.
         """
         print("Evaluating model on test data")
+        debug = False
         epoch_accuracy = []
         epoch_loss = []
         Timer = utils.Timer()
@@ -198,9 +199,9 @@ class Trainer:
                 output = preds.contiguous().view(-1, output_dim)
                 tgt = tensor_target.contiguous().view(-1)
                 loss = self.criterion(output, tgt)
-
-            print("Prediction time:")
-            Timer.stop_timer("preds")
+            if debug:
+                print("Prediction time:")
+                Timer.stop_timer("preds")
 
             highger_prob = torch.topk(preds, 1).indices
             # shape [batch_size*max_length, 1]: list of all characters in batch
@@ -228,9 +229,9 @@ class Trainer:
                 # print("Accuracy only computation time:")
                 # Timer.stop_timer("accuracy_comp")
                 # exit(0)
-
-            print("Full accuracy computation time:")
-            Timer.stop_timer("acc")
+            if debug:
+                print("Full accuracy computation time:")
+                Timer.stop_timer("acc")
 
             accuracy = correct_predictions / examples_number
             epoch_accuracy.append(accuracy)
