@@ -24,6 +24,11 @@ class Timer:
         print(lapse - self.start)
 
 
+def write_accuracies(list_of_accuracies, path):
+    with open(f"{path}accuracies.txt", "w") as output_file:
+        [output_file.write(f"{index + 1}\t{acc}") for index, acc in list_of_accuracies]
+
+
 def tensorize(array):
     tensorized_array = torch.tensor(array)
     return tensorized_array

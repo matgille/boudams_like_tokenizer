@@ -239,5 +239,6 @@ class Trainer:
         global_accuracy = mean(epoch_accuracy)
         global_loss = mean(epoch_loss)
         self.accuracies.append(global_accuracy)
+        utils.write_accuracies(self.accuracies, self.output_dir)
         print(f"Loss: {global_loss}\n"
               f"Accuracy on test set: {global_accuracy}")
