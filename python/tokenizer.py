@@ -27,6 +27,7 @@ parser.add_argument("-f", "--file", default=False,
 parser.add_argument('-o', "--output", help="Output folder")
 parser.add_argument('-d', '--device', help="Device to be used", default='cuda:0')
 parser.add_argument('-e', '--entities', help="Produce XML entities", default=False)
+parser.add_argument('-ep', '--epochs', help="Number of epochs", default=10, type=int)
 parser.add_argument('-b', '--batch_size', help="Sets batch size", default=64, type=int)
 parser.add_argument('-p', '--parameters', help="Path to params files")
 parser.add_argument('-v', '--vocabulary', help="Path to vocabulary", default=None)
@@ -46,6 +47,7 @@ parameters = args.parameters
 device = args.device
 lb_only = (args.hyphens_only == "True")
 workers = int(args.workers)
+epochs = args.epochs
 
 try:
     os.mkdir(output_dir)
@@ -63,7 +65,7 @@ if mode == 'train':
 
     print("Starting training")
     trainer = trainer.Trainer(batch_size=batch_size,
-                              epochs=20,
+                              epochs=epochs,
                               lr=0.0005,
                               device=device,
                               train_path=train_path,
