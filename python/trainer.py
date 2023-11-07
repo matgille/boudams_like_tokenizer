@@ -113,6 +113,7 @@ class Trainer:
 
         self.model.to(self.device)
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.9)
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.tgt_PAD_IDX)
         print(self.model.__repr__())
         self.accuracies = []
@@ -174,6 +175,7 @@ class Trainer:
                 self.optimizer.step()
 
             # self.model.eval()
+            self.scheduler.step()
             self.evaluate()
             self.save_model(epoch_number)
         self.get_best_model()
