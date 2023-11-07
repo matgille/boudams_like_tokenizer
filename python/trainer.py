@@ -21,6 +21,9 @@ class Trainer:
         # First we prepare the corpus
         now = datetime.now()
         self.device = device
+        if self.device != "cpu":
+            device_name = torch.cuda.get_device_name(self.device)
+            print(f"Device name: {device_name}")
         self.workers = workers
         max_length = 60
         self.timestamp = now.strftime("%d-%m-%Y_%H:%M:%S")
