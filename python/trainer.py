@@ -15,8 +15,8 @@ from torch.utils.data import DataLoader
 
 
 class Trainer:
-    def __init__(self, epochs, lr, device, batch_size, train_path, test_path, fine_tune, output_dir,
-                 **pretrained_params, workers):
+    def __init__(self, epochs, lr, device, batch_size, train_path, test_path, fine_tune, output_dir, workers,
+                 **pretrained_params):
         # First we prepare the corpus
         now = datetime.now()
         self.device = device
