@@ -51,6 +51,7 @@ class Datafier:
         self.test_path = test_path
         self.train_data = self.get_data_from_txt(train_path)
         self.test_data = self.get_data_from_txt(test_path)
+        random.shuffle(self.test_data)
         self.previous_model_vocab = input_vocab
         self.target_vocabulary = {"<PAD>": 0,
                                   "<SOS>": 1,
@@ -116,7 +117,7 @@ class Datafier:
         treated_inputs = self.augment_data(self.test_data, double_corpus=False)
         test_examples, test_targets = self.produce_corpus(treated_inputs)
         if len(test_examples) > 3000:
-            test_examples, test_targets = test_examples[:10_000], test_targets[:10_000]
+            test_examples, test_targets = test_examples[:20_000], test_targets[:20_000]
         test_padded_examples, test_padded_targets = self.pad_and_numerize(test_examples, test_targets)
         self.test_padded_examples = utils.tensorize(test_padded_examples)
         self.test_padded_targets = utils.tensorize(test_padded_targets)
