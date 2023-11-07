@@ -1,5 +1,6 @@
 import re
 import shutil
+import traceback
 import unicodedata
 
 import lxml.etree as etree
@@ -45,7 +46,7 @@ class Tagger:
         self.reverse_input_vocab = {v: k for k, v in self.input_vocab.items()}
         self.reverse_target_vocab = {v: k for k, v in self.target_vocab.items()}
         self.remove_breaks = remove_breaks  # Keep the linebreaks in prediction?
-        self.entities = xml_entities  # Whether to display original segmentation information with xml entities
+        self.entities = True if xml_entities == 'True' else False # Whether to display original segmentation information with xml entities
         self.debug = debug
         self.entities_dict = entities_mapping
         print(self.input_vocab)
@@ -63,6 +64,9 @@ class Tagger:
         line_breaks = f.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
         print([line_breaks[index].xpath("@xml:id")[0] for index, line in enumerate(line_breaks) if line.tail is None])
         text_lines = [utils.clean_and_normalize_encoding(line.tail) for line in line_breaks]
+        text_lines = [line for line in text_lines if line is not None]
+        text_lines = [line for line in text_lines if line != ""]
+        print([line for line in text_lines if line == ""])
         with open(xml_file.replace('.xml', '.txt'), "w") as output_txt_file:
             output_txt_file.write("\n".join(text_lines))
 
@@ -91,7 +95,7 @@ class Tagger:
             else:
                 correct_element.set("break", "no")
             if self.lb_only:
-                correct_element.tail = text_lines[index]
+                correct_element.tail = text_lines[index + 1]
             else:
                 correct_element.tail = correct_text
 
@@ -102,8 +106,8 @@ class Tagger:
             last_element.tail = text_lines[-1]
         else:
             last_element.tail = last_text_node
-
-        shutil.copy("XML/entities.dtd", xml_file.replace(".xml", ".dtd"))
+        if self.entities:
+            shutil.copy("XML/entities.dtd", xml_file.replace(".xml", ".dtd"))
         with open(xml_file.replace(".xml", ".tokenized.xml"), "w") as output_file:
             final_string = etree.tostring(f, pretty_print=True, encoding='utf-8', xml_declaration=False).decode('utf-8').replace("amp;", "")
 
@@ -272,7 +276,8 @@ class Tagger:
             result = regexp.search(prediction)
             try:
                 borne_sup = result.span(0)[1]
-            except:
+            except Exception as e:
+                print(traceback.format_exc())
                 print(f"Original string: |{orig}|")
                 print(f"Index: {index}")
                 print(f"Predicted string: |{prediction}|")
@@ -292,6 +297,7 @@ class Tagger:
                     print(line_break)
             except IndexError as e:
                 print(e)
+                print(len(prediction))
                 print(f"String: |{prediction}|")
                 print(f"Regex: |{expression}|")
                 print(borne_sup)

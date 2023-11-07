@@ -116,7 +116,7 @@ class Datafier:
         treated_inputs = self.augment_data(self.test_data, double_corpus=False)
         test_examples, test_targets = self.produce_corpus(treated_inputs)
         if len(test_examples) > 3000:
-            test_examples, test_targets = test_examples[:3000], test_targets[:3000]
+            test_examples, test_targets = test_examples[:10_000], test_targets[:10_000]
         test_padded_examples, test_padded_targets = self.pad_and_numerize(test_examples, test_targets)
         self.test_padded_examples = utils.tensorize(test_padded_examples)
         self.test_padded_targets = utils.tensorize(test_padded_targets)

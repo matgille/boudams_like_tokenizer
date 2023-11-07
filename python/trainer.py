@@ -27,6 +27,7 @@ class Trainer:
         else:
             input_vocab = None
         self.all_dataset_on_device = False
+        print("Loading data")
         train_dataloader = datafy.CustomTextDataset("train", train_path, test_path, fine_tune, input_vocab, max_length, self.device, self.all_dataset_on_device)
         test_dataloader = datafy.CustomTextDataset("test", train_path, test_path, fine_tune, input_vocab, max_length, self.device, self.all_dataset_on_device)
 
@@ -112,15 +113,15 @@ class Trainer:
         self.accuracies = []
 
     def save_model(self, epoch):
-        torch.save(self.model, f"../models/.tmp/model_tokenizer_{epoch}.pt")
+        torch.save(self.model, f"models/.tmp/model_tokenizer_{epoch}.pt")
 
     def get_best_model(self):
         print(self.accuracies)
         best_epoch_accuracy = self.accuracies.index(max(self.accuracies))
         print(f"Best model: {best_epoch_accuracy}.")
-        models = glob.glob(f"../models/.tmp/model_tokenizer_*.pt")
+        models = glob.glob(f"models/.tmp/model_tokenizer_*.pt")
         for model in models:
-            if model == f"../models/.tmp/model_tokenizer_{best_epoch_accuracy}.pt":
+            if model == f"models/.tmp/model_tokenizer_{best_epoch_accuracy}.pt":
                 shutil.copy(model, f"{self.output_dir}/best.pt")
             else:
                 os.remove(model)

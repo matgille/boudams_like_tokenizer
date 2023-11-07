@@ -85,7 +85,8 @@ elif mode == 'tag_xml':
                            remove_breaks=False,
                            xml_entities=entities,
                            entities_mapping=entities_mapping,
-                           debug=False)
+                           debug=False,
+                           lb_only=lb_only)
     tagger.tokenize_xml(file)
 
 
