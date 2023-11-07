@@ -9,13 +9,15 @@ import torch
 class Timer:
     def __init__(self):
         self.start = time.time()
+        self.started_time = dict()
+        self.stopped_time = dict()
 
-    def start_timer(self):
-        self.started_time = time.time()
+    def start_timer(self, timer_name):
+        self.started_time[timer_name] = time.time()
 
-    def stop_timer(self):
-        self.stopped_timer = time.time()
-        print(self.stopped_timer - self.started_time)
+    def stop_timer(self, timer_name):
+        self.stopped_time[timer_name] = time.time()
+        print(self.stopped_time[timer_name] - self.started_time[timer_name])
 
     def lapse(self):
         lapse = time.time()

@@ -186,7 +186,7 @@ class Trainer:
         Timer = utils.Timer()
         for examples, targets in tqdm.tqdm(self.loaded_test_data, unit_scale=self.batch_size):
             # https://discuss.pytorch.org/t/should-we-set-non-blocking-to-true/38234/3
-            Timer.start_timer()
+            Timer.start_timer("preds")
             print(f"Number of example in batch: {len(examples)}")
             if not self.all_dataset_on_device:
                 tensor_examples = examples.to(self.device)
@@ -200,19 +200,23 @@ class Trainer:
                 loss = self.criterion(output, tgt)
 
             print("Prediction time:")
-            Timer.stop_timer()
+            Timer.stop_timer("preds")
 
             highger_prob = torch.topk(preds, 1).indices
             # shape [batch_size*max_length, 1]: list of all characters in batch
             correct_predictions = 0
             examples_number = 0
-            Timer.start_timer()
+            Timer.start_timer("acc")
             for i, target in enumerate(targets):
+                Timer.start_timer("classes")
                 predicted_class = [element[0] for element in highger_prob.tolist()[i]]
                 zipped = list(zip(predicted_class, target))
+                print("Predicted classes time:")
+                Timer.start_timer("classes")
 
                 # We have to exclude the evaluation when target is <PAD> because the network has ignored when training;
                 # We ignore them too.
+                Timer.start_timer("accuracy_comp")
                 for prediction, target_class in zipped:
                     examples_number += 1
                     if target_class == self.tgt_PAD_IDX:
@@ -221,9 +225,11 @@ class Trainer:
                         pass
                     elif prediction == target_class:
                         correct_predictions += 1
+                print("Accuracy only computation time:")
+                Timer.start_timer("accuracy_comp")
 
-            print("Accuracy computation time:")
-            Timer.stop_timer()
+            print("Full accuracy computation time:")
+            Timer.stop_timer("acc")
 
             accuracy = correct_predictions / examples_number
             epoch_accuracy.append(accuracy)
