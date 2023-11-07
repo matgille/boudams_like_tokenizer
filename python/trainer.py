@@ -9,6 +9,7 @@ import tqdm
 import seq2seq as seq2seq
 import model as modele
 import datafy as datafy
+import utils as utils
 
 from statistics import mean
 from torch.utils.data import DataLoader
@@ -182,8 +183,10 @@ class Trainer:
         print("Evaluating model on test data")
         epoch_accuracy = []
         epoch_loss = []
+        Timer = utils.Timer()
         for examples, targets in tqdm.tqdm(self.loaded_test_data, unit_scale=self.batch_size):
             # https://discuss.pytorch.org/t/should-we-set-non-blocking-to-true/38234/3
+            Timer.start_timer()
             if not self.all_dataset_on_device:
                 tensor_examples = examples.to(self.device)
                 tensor_target = targets.to(self.device)
@@ -194,11 +197,13 @@ class Trainer:
                 output = preds.contiguous().view(-1, output_dim)
                 tgt = tensor_target.contiguous().view(-1)
                 loss = self.criterion(output, tgt)
+            Timer.stop_timer()
 
             highger_prob = torch.topk(preds, 1).indices
             # shape [batch_size*max_length, 1]: list of all characters in batch
             correct_predictions = 0
             examples_number = 0
+            Timer.start_timer()
             for i, target in enumerate(targets):
                 predicted_class = [element[0] for element in highger_prob.tolist()[i]]
                 zipped = list(zip(predicted_class, target))
@@ -213,6 +218,8 @@ class Trainer:
                         pass
                     elif prediction == target_class:
                         correct_predictions += 1
+
+            Timer.stop_timer()
 
             accuracy = correct_predictions / examples_number
             epoch_accuracy.append(accuracy)

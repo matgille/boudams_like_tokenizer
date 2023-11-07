@@ -1,8 +1,25 @@
 import random
 import re
+import time
 import unicodedata
 
 import torch
+
+
+class Timer:
+    def __init__(self):
+        self.start = time.time()
+
+    def start_timer(self):
+        self.started_time = time.time()
+
+    def stop_timer(self):
+        self.stopped_timer = time.time()
+        print(self.stopped_timer - self.started_time)
+
+    def lapse(self):
+        lapse = time.time()
+        print(lapse - self.start)
 
 
 def tensorize(array):
@@ -30,7 +47,6 @@ def get_vocab(data) -> set:
     data_string = [char for char in "".join(data).replace(" ", "")]
 
     return set(data_string)
-
 
 
 def normalize(line: str):
@@ -74,4 +90,3 @@ def entities_decl():
     "<!ENTITY esp-rien '<choice xmlns='http://www.tei-c.org/ns/1.0'><orig> </orig><reg/></choice>'>" \
     "<!ENTITY rien-esp '<choice xmlns='http://www.tei-c.org/ns/1.0'><orig/><reg><space/></reg></choice>'>" \
     "]>"
-
