@@ -1,3 +1,4 @@
+import glob
 import os
 import random
 import argparse
@@ -19,11 +20,12 @@ entities_mapping = {"add_space": "&rien-esp;",
 
 parser = argparse.ArgumentParser()
 # https://stackoverflow.com/a/30493366 Optional positional arguments
-parser.add_argument("mode", help="Tokenizer mode: train, tag xml, tag txt.")
+parser.add_argument("mode", help="Tokenizer mode: train, tag xml, if"
+                                 ".")
 parser.add_argument("-ft", "--fine_tune", default=False,
                     help="Fine-tuning mode: use existing vocab and model.")
-parser.add_argument("-f", "--file", default=False,
-                    help="File to tag.")
+parser.add_argument("-f", "--files", default=False,
+                    help="File to tag.", nargs='+')
 parser.add_argument('-o', "--output", help="Output folder")
 parser.add_argument('-d', '--device', help="Device to be used", default='cuda:0')
 parser.add_argument('-e', '--entities', help="Produce XML entities", default=False)
@@ -33,8 +35,9 @@ parser.add_argument('-b', '--batch_size', help="Sets batch size", default=64, ty
 parser.add_argument('-p', '--parameters', help="Path to params files")
 parser.add_argument('-v', '--vocabulary', help="Path to vocabulary", default=None)
 parser.add_argument('-m', '--model', help="Path to model", default=None)
+parser.add_argument('-rb', '--remove_breaks', help="Remove line breaks", default=False)
 parser.add_argument('-w', '--workers', help="Number of workers for dataloading", default=0, type=int)
-parser.add_argument('-ho', '--hyphens_only', help="Dectect only hyphens when tagging", default=False)
+parser.add_argument('-ho', '--hyphens_only', help="Detect only hyphens when tagging", default=False)
 
 
 args = parser.parse_args()
@@ -42,8 +45,9 @@ fine_tune = True if args.fine_tune == "True" else False
 batch_size = args.batch_size
 entities = args.entities
 mode = args.mode
-file = args.file
+files = args.files
 output_dir = args.output
+remove_breaks = args.remove_breaks
 parameters = args.parameters
 device = args.device
 lb_only = (args.hyphens_only == "True")
@@ -84,7 +88,7 @@ if mode == 'train':
 elif mode == 'tag_xml':
     vocab = args.vocabulary
     model = args.model
-    if not file:
+    if not files:
         print(f"Please indicate an input file.")
         exit(0)
     tagger = tagger.Tagger(device=device,
@@ -95,20 +99,22 @@ elif mode == 'tag_xml':
                            entities_mapping=entities_mapping,
                            debug=False,
                            lb_only=lb_only)
-    tagger.tokenize_xml(file, batch_size)
+    tagger.tokenize_xml(files, batch_size)
 
 
 
 elif mode == 'tag_txt':
     vocab = args.vocabulary
     model = args.model
-    if not file:
+    if not files:
         print(f"Please indicate an input file.")
         exit(0)
     tagger = tagger.Tagger(device=device,
                            input_vocab=vocab,
                            model=model,
-                           remove_breaks=False,
+                           remove_breaks=remove_breaks,
                            debug=False,
                            lb_only=lb_only)
-    tagger.tokenize_txt(file)
+    for file in files:
+        print(file)
+        tagger.tokenize_txt(file)

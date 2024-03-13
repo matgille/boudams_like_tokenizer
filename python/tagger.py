@@ -62,7 +62,6 @@ class Tagger:
             parser = etree.XMLParser(resolve_entities=True, encoding='utf-8')
             f = etree.parse(input_file, parser=parser)
         line_breaks = f.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
-        print([line_breaks[index].xpath("@xml:id")[0] for index, line in enumerate(line_breaks) if line.tail is None])
         text_lines = [utils.clean_and_normalize_encoding(line.tail) for line in line_breaks]
         text_lines = [line for line in text_lines if line is not None]
         text_lines = [line for line in text_lines if line != ""]
@@ -121,7 +120,7 @@ class Tagger:
                 final_string.replace("esp-rien", self.entities_dict["remove_space"][1:-1])
             output_file.write(final_string)
             print(f"Saved file to {xml_file.replace('.xml', '.tokenized.xml')}")
-            self.test_result(xml_file)
+            # self.test_result(xml_file)
 
     def test_result(self, xml_file):
         tei_namespace = 'http://www.tei-c.org/ns/1.0'
@@ -153,10 +152,18 @@ class Tagger:
         """
         print(self.lb_only)
         with open(txt_file, "r") as input_file:
-            inputs = [line for line in input_file.read().split("\n")][:-1]
+            inputs = [line for line in input_file.read().split("\n")]
+            inputs = [line for line in inputs if line != ""]
+            print(inputs)
+            if len(inputs) <= 1:
+                with open(txt_file.replace('.txt', '.tokenized.txt'), "w") as output_file:
+                    try:
+                        output_file.write(inputs[0])
+                    except IndexError:
+                        pass
+                return 
             text_lines = [utils.clean_and_normalize_encoding(line) for line in inputs]
             joined = "".join(line for line in text_lines)
-            get_chars = list(set([char for char in joined]))
             text_lines = [line for line in text_lines if line is not None]
 
         # To avoid out of memory problem.
@@ -180,7 +187,11 @@ class Tagger:
         else:
             predictions = [f'{text}-' if line_break is False else text for (text, line_break) in predictions]
         with open(txt_file.replace('.txt', '.tokenized.txt'), "w") as input_file:
-            input_file.write("\n".join(predictions))
+            if self.remove_breaks:
+                predictions = "\n".join(predictions).replace("-\n", "")
+                input_file.write(predictions)
+            else:
+                input_file.write("\n".join(predictions))
         print("Done!")
 
     def predict_lines(self, lines_to_predict: list):
@@ -266,8 +277,6 @@ class Tagger:
                 print("".join(predicted_line))
                 print("\n\n--- Fin ---\n\n")
 
-        if self.remove_breaks:
-            result = "".join(result)
 
         return result
 
