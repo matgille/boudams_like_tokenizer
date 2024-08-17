@@ -142,7 +142,6 @@ class Datafier:
         for example in normalized:
             if len(example) > self.length_threshold:
                 normalized_length_list.append(example[self.length_threshold])
-                normalized_length_list.append(example[self.length_threshold])
             else:
                 normalized_length_list.append(example)
         return normalized_length_list
@@ -194,6 +193,8 @@ class Datafier:
         examples = []
         targets = []
         for element in augmented_data:
+            if len(element) < 5:
+                continue
             example = []
             target = []
             n = 0
@@ -219,7 +220,7 @@ class Datafier:
     def pad_and_numerize(self, examples, targets):
         self.max_length_examples = max([len(example) for example in examples])
         max_length_targets = max([len(target) for target in targets])
-        if max_length_targets > 300:
+        if max_length_targets > 500:
             print("There is a problem with some line way too long. Please check the datasets.")
             exit(0)
         pad_value = "<PAD>"

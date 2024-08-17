@@ -58,6 +58,7 @@ class Tagger:
         """
         tei_namespace = 'http://www.tei-c.org/ns/1.0'
         namespace_declaration = {'tei': tei_namespace}
+        print(xml_file)
         with open(xml_file, "r") as input_file:
             parser = etree.XMLParser(resolve_entities=True, encoding='utf-8')
             f = etree.parse(input_file, parser=parser)
@@ -88,6 +89,9 @@ class Tagger:
         for index, (xml_element, (text, lb)) in enumerate(zipped[:-1]):
             # tei:lb stands for line beggining: we have to get the next line
             correct_element, (correct_text, next_lb) = zipped[index + 1]
+            if correct_text[-1] in ["-", "¬"]:
+                correct_text = correct_text[:-1]
+                text_lines[index + 1] = text_lines[index + 1][:-1]
             if lb:
                 correct_element.set("break", "yes")
             else:
@@ -120,7 +124,6 @@ class Tagger:
                 final_string.replace("esp-rien", self.entities_dict["remove_space"][1:-1])
             output_file.write(final_string)
             print(f"Saved file to {xml_file.replace('.xml', '.tokenized.xml')}")
-            # self.test_result(xml_file)
 
     def test_result(self, xml_file):
         tei_namespace = 'http://www.tei-c.org/ns/1.0'
@@ -289,6 +292,8 @@ class Tagger:
         """
 
         pairs = [lines[n] + lines[n + 1] for n in range(len(lines) - 1)]
+        if not pairs:
+            return pairs
         # On annote les lignes fusionnées
         preds_list = []
         lines_to_predict = pairs
@@ -367,8 +372,9 @@ class Tagger:
 
         try:
             max_length = max([len(sentence) for sentence in lines])
-        except:
-            print("Line break error: please remove last line if empty")
+        except ValueError as e:
+            print("Something went wrong. Lines:")
+            print(lines)
             exit(0)
         numerical_sentences = []
         splitted_sentences_no_unk = []

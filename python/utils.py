@@ -59,7 +59,7 @@ def get_vocab(data) -> set:
 def normalize(line: str):
     # NFD semble la meilleure normalisation pour l'instant.
     # Voir https://unicode.org/reports/tr15/
-    return "".join([unicodedata.normalize('NFD', char) for char in line])
+    return "".join([unicodedata.normalize('NFC', char) for char in line])
 
 
 def remove_multiple_spaces(text: str):

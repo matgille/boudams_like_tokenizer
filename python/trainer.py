@@ -25,7 +25,7 @@ class Trainer:
             device_name = torch.cuda.get_device_name(self.device)
             print(f"Device name: {device_name}")
         self.workers = workers
-        max_length = 60
+        max_length = 300
         self.timestamp = now.strftime("%d-%m-%Y_%H:%M:%S")
         if fine_tune:
             input_vocab = torch.load(pretrained_params.get("vocab"))
@@ -36,16 +36,16 @@ class Trainer:
         train_dataloader = datafy.CustomTextDataset("train", train_path, test_path, fine_tune, input_vocab, max_length, self.device, self.all_dataset_on_device)
         test_dataloader = datafy.CustomTextDataset("test", train_path, test_path, fine_tune, input_vocab, max_length, self.device, self.all_dataset_on_device)
 
+        self.loaded_test_data = DataLoader(test_dataloader,
+                                           batch_size=batch_size,
+                                           shuffle=False,
+                                           num_workers=8,
+                                           pin_memory=False)
         self.loaded_train_data = DataLoader(train_dataloader,
                                             batch_size=batch_size,
                                             shuffle=True,
                                             num_workers=self.workers,
                                             pin_memory=False)
-        self.loaded_test_data = DataLoader(test_dataloader,
-                                           batch_size=batch_size,
-                                           shuffle=False,
-                                           num_workers=self.workers,
-                                           pin_memory=False)
 
         self.output_dir = output_dir
 

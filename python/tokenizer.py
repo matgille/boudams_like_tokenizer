@@ -31,7 +31,7 @@ parser.add_argument('-d', '--device', help="Device to be used", default='cuda:0'
 parser.add_argument('-e', '--entities', help="Produce XML entities", default=False)
 parser.add_argument('-ep', '--epochs', help="Number of epochs", default=10, type=int)
 parser.add_argument('-k', '--kernel_size', help="Kernel size", default=5, type=int)
-parser.add_argument('-b', '--batch_size', help="Sets batch size", default=64, type=int)
+parser.add_argument('-b', '--batch_size', help="Sets batch size", default=32, type=int)
 parser.add_argument('-p', '--parameters', help="Path to params files")
 parser.add_argument('-v', '--vocabulary', help="Path to vocabulary", default=None)
 parser.add_argument('-m', '--model', help="Path to model", default=None)
@@ -99,7 +99,8 @@ elif mode == 'tag_xml':
                            entities_mapping=entities_mapping,
                            debug=False,
                            lb_only=lb_only)
-    tagger.tokenize_xml(files, batch_size)
+    for file in files:
+        tagger.tokenize_xml(file, batch_size)
 
 
 
@@ -116,5 +117,4 @@ elif mode == 'tag_txt':
                            debug=False,
                            lb_only=lb_only)
     for file in files:
-        print(file)
         tagger.tokenize_txt(file)
