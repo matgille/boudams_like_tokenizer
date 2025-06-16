@@ -32,9 +32,9 @@ class Tagger:
         self.device = device
         self.lb_only = lb_only  # whether to detect hyphens only or not.
         if self.device == 'cpu':
-            self.model = torch.load(model, map_location=self.device)
+            self.model = torch.load(model, map_location=self.device, weights_only=False)
         else:
-            self.model = torch.load(model).to(self.device)
+            self.model = torch.load(model, weights_only=False).to(self.device)
         self.input_vocab = torch.load(input_vocab)
         self.target_vocab = {"<PAD>": 0,
                              "<SOS>": 1,
@@ -80,7 +80,8 @@ class Tagger:
                 predictions.extend(predicted_batch)
 
             # We predict the last lines of the text that don't make it to a full batch.
-            predictions.extend(self.tag_and_detect_lb(text_lines[(n + 1) * batch_size:-1]))
+            # Il y a probablement un problème ici.
+            predictions.extend(self.tag_and_detect_lb(text_lines[(n + 1) * batch_size:]))
         else:
             predictions = self.tag_and_detect_lb(text_lines)
 
@@ -92,7 +93,10 @@ class Tagger:
             if correct_text[-1] in ["-", "¬"]:
                 correct_text = correct_text[:-1]
                 text_lines[index + 1] = text_lines[index + 1][:-1]
-            if lb:
+            # On ne réécrit pas les lignes déjà taguées.
+            if correct_element.xpath("@break")[0] != "?":
+                pass
+            elif lb:
                 correct_element.set("break", "yes")
             else:
                 correct_element.set("break", "no")
@@ -105,14 +109,18 @@ class Tagger:
         last_element, (last_text_node, last_lb) = zipped[-1]
 
         if self.lb_only:
-            last_element.tail = text_lines[-1]
+            last_element.tail = last_text_node
+            if last_lb:
+                last_element.set("break", "yes")
+            else:
+                last_element.set("break", "no")
         else:
             last_element.tail = last_text_node
         if self.entities:
             shutil.copy("XML/entities.dtd", xml_file.replace(".xml", ".dtd"))
         with open(xml_file.replace(".xml", ".tokenized.xml"), "w") as output_file:
             final_string = etree.tostring(f, pretty_print=True, encoding='utf-8', xml_declaration=False).decode(
-                'utf-8').replace("amp;", "")
+                'utf-8')
 
             # Producing the DTD declaration
             if self.entities:
@@ -355,6 +363,7 @@ class Tagger:
 
         # Gestion de la dernière ligne
         last_line = lines[-1]
+        print(last_line)
         last_prediction = "".join(self.predict_lines(last_line))
         prediction = re.sub(r"\s+", r" ", last_prediction)
         processed_list.append((prediction, True))
@@ -363,6 +372,7 @@ class Tagger:
         leading_spaces = re.compile('^\s')
         processed_list = [(re.sub(leading_spaces, "", prediction), line_break) for (prediction, line_break) in
                           processed_list]
+        print(processed_list)
         return processed_list
 
     def lines_to_tensor(self, lines: str):

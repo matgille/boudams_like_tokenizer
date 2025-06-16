@@ -4,6 +4,8 @@ import random
 import argparse
 import json
 
+import torch
+
 import trainer as trainer
 import tagger as tagger
 
@@ -31,7 +33,7 @@ parser.add_argument('-d', '--device', help="Device to be used", default='cuda:0'
 parser.add_argument('-e', '--entities', help="Produce XML entities", default=False)
 parser.add_argument('-ep', '--epochs', help="Number of epochs", default=10, type=int)
 parser.add_argument('-k', '--kernel_size', help="Kernel size", default=5, type=int)
-parser.add_argument('-b', '--batch_size', help="Sets batch size", default=32, type=int)
+parser.add_argument('-b', '--batch_size', help="Sets batch size", default=128, type=int)
 parser.add_argument('-p', '--parameters', help="Path to params files")
 parser.add_argument('-v', '--vocabulary', help="Path to vocabulary", default=None)
 parser.add_argument('-m', '--model', help="Path to model", default=None)
@@ -91,6 +93,7 @@ elif mode == 'tag_xml':
     if not files:
         print(f"Please indicate an input file.")
         exit(0)
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     tagger = tagger.Tagger(device=device,
                            input_vocab=vocab,
                            model=model,
