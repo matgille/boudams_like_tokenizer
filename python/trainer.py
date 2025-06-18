@@ -213,7 +213,7 @@ class Trainer:
             correct_predictions = 0
             examples_number = 0
             Timer.start_timer("acc")
-            for i, target in enumerate(targets):
+            for i, target in enumerate(targets[:10]):
                 Timer.start_timer("classes")
                 predicted_class = [element[0] for element in highger_prob.tolist()[i]]
                 zipped = list(zip(predicted_class, target))
