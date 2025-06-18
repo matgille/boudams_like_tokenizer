@@ -226,6 +226,10 @@ class Trainer:
                     examples_number += 1
                     if target_class == self.tgt_PAD_IDX:
                         examples_number -= 1
+                        continue
+                    elif target_class == 3:
+                        examples_number -= 1
+                        continue
                     if prediction == self.tgt_PAD_IDX:
                         pass
                     elif prediction == target_class:
