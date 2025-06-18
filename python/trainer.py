@@ -2,6 +2,8 @@ from datetime import datetime
 import glob
 import os
 import shutil
+
+import numpy as np
 import torch
 import torch.nn as nn
 import tqdm
@@ -191,6 +193,7 @@ class Trainer:
         epoch_accuracy = []
         epoch_loss = []
         Timer = utils.Timer()
+        accuracies = []
         for examples, targets in tqdm.tqdm(self.loaded_test_data, unit_scale=self.batch_size):
             # https://discuss.pytorch.org/t/should-we-set-non-blocking-to-true/38234/3
             Timer.start_timer("preds")
@@ -245,11 +248,12 @@ class Trainer:
             accuracy = correct_predictions / examples_number
             epoch_accuracy.append(accuracy)
             epoch_loss.append(loss.item())
-            utils.write_accuracy(f"{str(accuracy)}\n", self.output_dir)
+            accuracies.append(accuracy)
 
         global_accuracy = mean(epoch_accuracy)
         global_loss = mean(epoch_loss)
         self.accuracies.append(global_accuracy)
         # utils.write_accuracies(self.accuracies, self.output_dir)
+        utils.write_accuracy(f"{np.mean(accuracies)}\n", self.output_dir)
         print(f"Loss: {global_loss}\n"
               f"Accuracy on test set: {global_accuracy}")
