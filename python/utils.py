@@ -34,7 +34,7 @@ def remove_file(path):
 
 def write_accuracy(accuracy, path):
     with open(f"{path}accuracies.txt", "a") as output_file:
-        output_file.write(accuracy)
+        output_file.write(str(accuracy))
 
 
 def tensorize(array):
