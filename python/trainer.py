@@ -213,7 +213,7 @@ class Trainer:
             correct_predictions = 0
             examples_number = 0
             Timer.start_timer("acc")
-            for i, target in enumerate(targets[:10]):
+            for i, target in enumerate(targets):
                 Timer.start_timer("classes")
                 predicted_class = [element[0] for element in highger_prob.tolist()[i]]
                 zipped = list(zip(predicted_class, target))
@@ -245,7 +245,7 @@ class Trainer:
             accuracy = correct_predictions / examples_number
             epoch_accuracy.append(accuracy)
             epoch_loss.append(loss.item())
-            utils.write_accuracy(accuracy, self.output_dir)
+            utils.write_accuracy(f"{str(accuracy)}\n", self.output_dir)
 
         global_accuracy = mean(epoch_accuracy)
         global_loss = mean(epoch_loss)
