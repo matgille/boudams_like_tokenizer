@@ -134,6 +134,7 @@ class Trainer:
         print(f"Saving best model to {self.output_dir}/best.pt")
 
     def train(self, clip=0.1):
+        utils.remove_file(f"{self.output_dir}accuracies.txt")
         print("Starting training")
         torch.save(self.input_vocab, f"{self.output_dir}/vocab.voc")
         print("Evaluating randomly intiated model")
@@ -244,10 +245,11 @@ class Trainer:
             accuracy = correct_predictions / examples_number
             epoch_accuracy.append(accuracy)
             epoch_loss.append(loss.item())
+            utils.write_accuracy(accuracy, self.output_dir)
 
         global_accuracy = mean(epoch_accuracy)
         global_loss = mean(epoch_loss)
         self.accuracies.append(global_accuracy)
-        utils.write_accuracies(self.accuracies, self.output_dir)
+        # utils.write_accuracies(self.accuracies, self.output_dir)
         print(f"Loss: {global_loss}\n"
               f"Accuracy on test set: {global_accuracy}")

@@ -1,3 +1,4 @@
+import os
 import random
 import re
 import time
@@ -24,9 +25,16 @@ class Timer:
         print(lapse - self.start)
 
 
-def write_accuracies(list_of_accuracies, path):
-    with open(f"{path}accuracies.txt", "w") as output_file:
-        [output_file.write(f"{index + 1}\t{acc}\n") for index, acc in enumerate(list_of_accuracies)]
+def remove_file(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+def write_accuracy(accuracy, path):
+    with open(f"{path}accuracies.txt", "a") as output_file:
+        [output_file.write(accuracy)]
 
 
 def tensorize(array):
