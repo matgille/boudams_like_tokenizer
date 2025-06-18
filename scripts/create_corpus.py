@@ -36,7 +36,7 @@ def main(corpus, proportions, max_example_length):
 	train_corpus.extend(corpus_to_split[proportions['test']:proportions['test'] + proportions['train']])
 	dev_corpus.extend(corpus_to_split[proportions['test'] + proportions['train']:])
 
-	input_file_dir = "/".join(corpus.split("/")[:-1]) + "/"
+	input_file_dir = "/".join(corpus.split("/")[:-1]) + "/splits/"
 	try:
 		os.makedirs(f"{input_file_dir}/test")
 	except FileExistsError:
