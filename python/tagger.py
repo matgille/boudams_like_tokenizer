@@ -63,6 +63,8 @@ class Tagger:
             parser = etree.XMLParser(resolve_entities=True, encoding='utf-8')
             f = etree.parse(input_file, parser=parser)
         all_divs = f.xpath("//tei:div[@type='chapitre']", namespaces=namespace_declaration)
+
+        # On splitte par division (à universaliser) pour éviter les déplacements de hiérachie.
         for div in all_divs:
             line_breaks = div.xpath("descendant::tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
             text_lines = [utils.clean_and_normalize_encoding(line.tail) for line in line_breaks]
@@ -87,13 +89,15 @@ class Tagger:
 
             zipped = list(zip(line_breaks, predictions))
             print("Starting tokenisation")
-            for index, (xml_element, (text, lb)) in enumerate(zipped[:-1]):
+            for index, (xml_element, (text, lb, prob)) in enumerate(zipped[:-1]):
                 # tei:lb stands for line beggining: we have to get the next line
-                correct_element, (correct_text, next_lb) = zipped[index + 1]
+                correct_element, (correct_text, next_lb, next_prob) = zipped[index + 1]
                 if correct_text[-1] in ["-", "¬"]:
                     correct_text = correct_text[:-1]
                     text_lines[index + 1] = text_lines[index + 1][:-1]
                 # On ne réécrit pas les lignes déjà taguées.
+                prob_as_str = str(round(prob, 2))
+                correct_element.set("prob", prob_as_str)
                 if correct_element.xpath("@break")[0] != "?":
                     pass
                 elif lb:
@@ -105,8 +109,12 @@ class Tagger:
                 else:
                     correct_element.tail = correct_text
 
+                # On trouve un seuil sous lequel il vaut mieux tagger la ligne comme ne coupant pas un mot
+                if prob < 5:
+                    correct_text.set("break", "yes")
+
             # Management of last tei:lb
-            last_element, (last_text_node, last_lb) = zipped[-1]
+            last_element, (last_text_node, last_lb, last_prob) = zipped[-1]
 
             if self.lb_only:
                 last_element.tail = last_text_node
@@ -213,14 +221,17 @@ class Tagger:
         decision to break the line or not.
         """
         # TODO: instead of merging two lines in one, merge three and take the middle one as the prediction.
+        assert isinstance(lines_to_predict, list), "lines_to_predict must be a list"
         input_tensor, formatted_inputs_no_unks = self.lines_to_tensor(lines_to_predict)
         input_size = len(formatted_inputs_no_unks)
         input_tensor = input_tensor.to(self.device)
         prediction = self.model(input_tensor)
-        higher_prob = torch.topk(prediction, 1).indices
-
+        higher_prob_indices = torch.topk(prediction, 1).indices
+        higher_prob = torch.topk(prediction, 1).values
         # Shape [batch_size*max_length]
-        list_of_predictions = higher_prob.view(-1).tolist()
+        list_of_predictions = higher_prob_indices.view(-1).tolist()
+        list_of_prob = higher_prob.tolist()
+
 
         preds = [self.reverse_target_vocab[pred] for pred in list_of_predictions]
         splitted_preds = np.split(np.array(preds), input_size)
@@ -230,8 +241,10 @@ class Tagger:
         result = []
         for sentence_number in range(input_size):
             current_pred = splitted_preds[sentence_number]
-            # Length: max_length
+            current_probs = [item[0] for item in list_of_prob[sentence_number]]
             current_input = formatted_inputs_no_unks[sentence_number]
+            zipped = list(zip(current_input, splitted_preds[sentence_number], current_probs))
+            # Length: max_length
 
             # We split the preds in n examples.
             padding_position = utils.find(current_input, "<PAD>")
@@ -281,7 +294,7 @@ class Tagger:
                     print(pred)
                     print(char)
                     predicted_line.append(char)
-            result.append("".join(predicted_line))
+            result.append(("".join(predicted_line), zipped))
             if self.debug:
                 print("\n\n--- Début ---\n\n")
                 print(sentence_prediction_zipped)
@@ -299,19 +312,31 @@ class Tagger:
         :return: a list of tuples ('predicted_line': str, break_line: bool)
         """
 
-        pairs = [lines[n] + lines[n + 1] for n in range(len(lines) - 1)]
+        pairs = [(lines[n] + lines[n + 1], len(lines[n]) - 1) for n in range(len(lines) - 1)]
         if not pairs:
             return pairs
         # On annote les lignes fusionnées
         preds_list = []
-        lines_to_predict = pairs
-        for tokenized_string in self.predict_lines(lines_to_predict):
-            preds_list.append(tokenized_string)
+        lines_to_predict = [line for line, cut in pairs]
+        for idx, (tokenized_string, results) in enumerate(self.predict_lines(lines_to_predict)):
+            try:
+                split_prob =  results[pairs[idx][-1] + 2]
+                prob = split_prob[-1]
+                # Une autre façon d'identifier la césure, plus simple que les regex. À implémenter
+                if split_prob[1] == "<S-s>":
+                    cesure = False
+                else:
+                    cesure = True
+            except IndexError:
+                print("Issue")
+                exit(0)
+            print(tokenized_string)
+            preds_list.append((tokenized_string, prob))
 
         zipped_list = list(zip(lines, preds_list))
         processed_list = []
 
-        for index, (orig, prediction) in enumerate(zipped_list):
+        for index, (orig, (prediction, prob)) in enumerate(zipped_list):
             # On supprime les espaces. 8 Caractères doivent être suffisants pour éviter toute ambiguité.
             string_to_match = orig[-20:].replace(" ", "")
             # On utilise une expression régulière pour matcher la limite entre les deux lignes, pour les séparer.
@@ -359,20 +384,20 @@ class Tagger:
 
             prediction = re.sub(r"\s+", r" ", prediction)
 
-            processed_list.append((prediction, line_break))
+            processed_list.append((prediction, line_break, prob))
 
         # Gestion de la dernière ligne
         last_line = lines[-1]
+        print("Last line:")
         print(last_line)
-        last_prediction = "".join(self.predict_lines(last_line))
+        last_prediction = "".join(self.predict_lines([last_line])[0][0])
         prediction = re.sub(r"\s+", r" ", last_prediction)
-        processed_list.append((prediction, True))
+        processed_list.append((prediction, True, 1))
 
         # We remove any leading spaces
         leading_spaces = re.compile('^\s')
-        processed_list = [(re.sub(leading_spaces, "", prediction), line_break) for (prediction, line_break) in
+        processed_list = [(re.sub(leading_spaces, "", prediction), line_break, prob) for (prediction, line_break, prob) in
                           processed_list]
-        print(processed_list)
         return processed_list
 
     def lines_to_tensor(self, lines: str):
