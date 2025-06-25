@@ -111,7 +111,7 @@ class Tagger:
 
                 # On trouve un seuil sous lequel il vaut mieux tagger la ligne comme ne coupant pas un mot
                 if prob < 5:
-                    correct_text.set("break", "yes")
+                    correct_element.set("break", "yes")
 
             # Management of last tei:lb
             last_element, (last_text_node, last_lb, last_prob) = zipped[-1]
