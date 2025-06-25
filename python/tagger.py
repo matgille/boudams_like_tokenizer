@@ -62,60 +62,62 @@ class Tagger:
         with open(xml_file, "r") as input_file:
             parser = etree.XMLParser(resolve_entities=True, encoding='utf-8')
             f = etree.parse(input_file, parser=parser)
-        line_breaks = f.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
-        text_lines = [utils.clean_and_normalize_encoding(line.tail) for line in line_breaks]
-        text_lines = [line for line in text_lines if line is not None]
-        text_lines = [line for line in text_lines if line != ""]
-        print([line for line in text_lines if line == ""])
-        with open(xml_file.replace('.xml', '.txt'), "w") as output_txt_file:
-            output_txt_file.write("\n".join(text_lines))
+        all_divs = f.xpath("//tei:div[@type='chapitre']", namespaces=namespace_declaration)
+        for div in all_divs:
+            line_breaks = div.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
+            text_lines = [utils.clean_and_normalize_encoding(line.tail) for line in line_breaks]
+            text_lines = [line for line in text_lines if line is not None]
+            text_lines = [line for line in text_lines if line != ""]
+            print([line for line in text_lines if line == ""])
+            with open(xml_file.replace('.xml', '.txt'), "w") as output_txt_file:
+                output_txt_file.write("\n".join(text_lines))
 
-        # To avoid out of memory problem.
-        if len(text_lines) > 500:
-            predictions = []
-            steps = len(text_lines) // batch_size
-            for n in tqdm.tqdm(range(steps)):
-                batch = text_lines[n * batch_size: (n * batch_size) + batch_size]
-                predicted_batch = self.tag_and_detect_lb(batch)
-                predictions.extend(predicted_batch)
+            # To avoid out of memory problem.
+            if len(text_lines) > 500:
+                predictions = []
+                steps = len(text_lines) // batch_size
+                for n in tqdm.tqdm(range(steps)):
+                    batch = text_lines[n * batch_size: (n * batch_size) + batch_size]
+                    predicted_batch = self.tag_and_detect_lb(batch)
+                    predictions.extend(predicted_batch)
 
-            # We predict the last lines of the text that don't make it to a full batch.
-            # Il y a probablement un problème ici.
-            predictions.extend(self.tag_and_detect_lb(text_lines[(n + 1) * batch_size:]))
-        else:
-            predictions = self.tag_and_detect_lb(text_lines)
-
-        zipped = list(zip(line_breaks, predictions))
-        print("Starting tokenisation")
-        for index, (xml_element, (text, lb)) in enumerate(zipped[:-1]):
-            # tei:lb stands for line beggining: we have to get the next line
-            correct_element, (correct_text, next_lb) = zipped[index + 1]
-            if correct_text[-1] in ["-", "¬"]:
-                correct_text = correct_text[:-1]
-                text_lines[index + 1] = text_lines[index + 1][:-1]
-            # On ne réécrit pas les lignes déjà taguées.
-            if correct_element.xpath("@break")[0] != "?":
-                pass
-            elif lb:
-                correct_element.set("break", "yes")
+                # We predict the last lines of the text that don't make it to a full batch.
+                # Il y a probablement un problème ici.
+                predictions.extend(self.tag_and_detect_lb(text_lines[(n + 1) * batch_size:]))
             else:
-                correct_element.set("break", "no")
+                predictions = self.tag_and_detect_lb(text_lines)
+
+            zipped = list(zip(line_breaks, predictions))
+            print("Starting tokenisation")
+            for index, (xml_element, (text, lb)) in enumerate(zipped[:-1]):
+                # tei:lb stands for line beggining: we have to get the next line
+                correct_element, (correct_text, next_lb) = zipped[index + 1]
+                if correct_text[-1] in ["-", "¬"]:
+                    correct_text = correct_text[:-1]
+                    text_lines[index + 1] = text_lines[index + 1][:-1]
+                # On ne réécrit pas les lignes déjà taguées.
+                if correct_element.xpath("@break")[0] != "?":
+                    pass
+                elif lb:
+                    correct_element.set("break", "yes")
+                else:
+                    correct_element.set("break", "no")
+                if self.lb_only:
+                    correct_element.tail = text_lines[index + 1]
+                else:
+                    correct_element.tail = correct_text
+
+            # Management of last tei:lb
+            last_element, (last_text_node, last_lb) = zipped[-1]
+
             if self.lb_only:
-                correct_element.tail = text_lines[index + 1]
+                last_element.tail = last_text_node
+                if last_lb:
+                    last_element.set("break", "yes")
+                else:
+                    last_element.set("break", "no")
             else:
-                correct_element.tail = correct_text
-
-        # Management of last tei:lb
-        last_element, (last_text_node, last_lb) = zipped[-1]
-
-        if self.lb_only:
-            last_element.tail = last_text_node
-            if last_lb:
-                last_element.set("break", "yes")
-            else:
-                last_element.set("break", "no")
-        else:
-            last_element.tail = last_text_node
+                last_element.tail = last_text_node
         if self.entities:
             shutil.copy("XML/entities.dtd", xml_file.replace(".xml", ".dtd"))
         with open(xml_file.replace(".xml", ".tokenized.xml"), "w") as output_file:
