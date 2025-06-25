@@ -64,13 +64,11 @@ class Tagger:
             f = etree.parse(input_file, parser=parser)
         all_divs = f.xpath("//tei:div[@type='chapitre']", namespaces=namespace_declaration)
         for div in all_divs:
-            line_breaks = div.xpath("//tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
+            line_breaks = div.xpath("descendant::tei:lb[not(parent::tei:fw)]", namespaces=namespace_declaration)
             text_lines = [utils.clean_and_normalize_encoding(line.tail) for line in line_breaks]
             text_lines = [line for line in text_lines if line is not None]
             text_lines = [line for line in text_lines if line != ""]
             print([line for line in text_lines if line == ""])
-            with open(xml_file.replace('.xml', '.txt'), "w") as output_txt_file:
-                output_txt_file.write("\n".join(text_lines))
 
             # To avoid out of memory problem.
             if len(text_lines) > 500:
